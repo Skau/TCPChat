@@ -1,6 +1,6 @@
 #include "client.h"
 
-Client::Client(const QString &name, QTcpSocket* socket) : name_(name), socket_(socket)
+Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(id), name_(name), socket_(socket)
 {
     connect(socket, &QTcpSocket::readyRead, this, &Client::readyRead);
 }

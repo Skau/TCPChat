@@ -5,35 +5,49 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <vector>
+#include <memory>
 
-#include <client.h>
+class Client;
+
+struct ChatRoom
+{
+    QString name;
+    std::vector<std::shared_ptr<Client>> clients;
+};
 
 class Server : public QObject
 {
     Q_OBJECT
 
+private:
+    qint16 idCounter_;
+    std::vector<std::shared_ptr<Client>> clients_;
+    std::vector<ChatRoom> rooms_;
+    QTcpServer server_;
+
 public:
     Server();
     ~Server();
 
+private:
+    void removeClients();
+
 signals:
     void newConnectionAdded(const QString& name);
     void listenError();
-    void acceptClientError(QAbstractSocket::SocketError error);
+    void acceptClientError(QAbstractSocket::SocketError error) const;
+    void addRoom(const QString& name);
+    void addClientNames(const QString& roomName, const std::vector<QString>& names);
+    void changeRoomName(const QString& newName, int index);
 
 public slots:
     void startServer(const QHostAddress& address, const quint16& port);
     void stopServer();
     void newConnection();
-    void acceptError(QAbstractSocket::SocketError socketError);
-    void readyRead(Client *client);
+    void acceptError(QAbstractSocket::SocketError socketError) const;
+    void readyRead(Client *client) const;
+    void selectedRoom(const int& index);
 
-private:
-    std::vector<Client*> clients_;
-
-    void removeClients();
-
-    QTcpServer server_;
 };
 
 #endif // SERVER_H

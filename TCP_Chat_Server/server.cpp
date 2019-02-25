@@ -2,7 +2,9 @@
 #include <QDebug>
 #include <QNetworkProxy>
 
-Server::Server()
+#include "client.h"
+
+Server::Server() : idCounter_(-1)
 {    
     connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
     connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
@@ -26,6 +28,11 @@ void Server::startServer(const QHostAddress& address, const quint16& port)
     {
         emit listenError();
     }
+
+    ChatRoom room;
+    room.name = "Main Room";
+    rooms_.push_back(room);
+    emit addRoom(room.name);
 }
 
 void Server::stopServer()
@@ -45,8 +52,9 @@ void Server::newConnection()
     auto newClientName = socket->readAll();
 
     // Create client
-    auto client = new Client(newClientName, socket);
-    connect(client, &Client::newDataAvailable, this, &Server::readyRead);
+    ++idCounter_;
+    auto client = std::make_shared<Client>(idCounter_, newClientName, socket);
+    connect(client.get(), &Client::newDataAvailable, this, &Server::readyRead);
 
     // Send all connected client names to new client
     if(clients_.size())
@@ -54,7 +62,7 @@ void Server::newConnection()
         QString message = "newall";
         for(auto& connectedClient : clients_)
         {
-            message += QString(connectedClient->getName() + " ");
+            message += connectedClient->getName() + " ";
         }
         qDebug() << message;
         client->getSocket()->write(message.toStdString().c_str());
@@ -62,7 +70,11 @@ void Server::newConnection()
 
     // Add client to clients_
     clients_.push_back(client);
+    rooms_[0].clients.push_back(client);
     emit newConnectionAdded(newClientName);
+
+    emit changeRoomName(QString(rooms_[0].name + " [" + QString::number(rooms_[0].clients.size()) + "]"), 0);
+
 
     // Send name of new client to all connected clients
     QString message = QString("new" + newClientName);
@@ -72,13 +84,13 @@ void Server::newConnection()
     }
 }
 
-void Server::acceptError(QAbstractSocket::SocketError socketError)
+void Server::acceptError(QAbstractSocket::SocketError socketError) const
 {
     qDebug() << "Accept error: " << socketError;
     emit acceptClientError(socketError);
 }
 
-void Server::readyRead(Client* client)
+void Server::readyRead(Client* client) const
 {
     auto message = QString(client->getName() + ": " + client->getSocket()->readAll()).toStdString().c_str();
 
@@ -88,12 +100,24 @@ void Server::readyRead(Client* client)
     }
 }
 
+void Server::selectedRoom(const int &index)
+{
+    auto room = rooms_[static_cast<unsigned int>(index)];
+    std::vector<QString> names;
+
+    for(auto& client : room.clients)
+    {
+        names.push_back(client->getName());
+    }
+
+    emit addClientNames(room.name, names);
+}
+
 void Server::removeClients()
 {
     for(auto& client : clients_)
     {
-        delete client;
-        client = nullptr;
+        client.reset();
     }
     clients_.clear();
 }

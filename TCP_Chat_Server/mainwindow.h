@@ -12,6 +12,10 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+private:
+    Ui::MainWindow *ui;
+    QString currentRoom_;
+
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
@@ -19,19 +23,22 @@ public:
 signals:
     void startServer(const QHostAddress& address, const quint16& port);
     void stopServer();
+    void selectedRoom(const int& index);
 
 public slots:
     void newConnectionAdded(const QString& name);
     void acceptError(QAbstractSocket::SocketError error);
     void listenError();
+    void addRoom(const QString& name);
+    void changeRoomName(const QString& newName, int index);
+    void addClientNames(const QString &roomName, const std::vector<QString>& names);
 
 private slots:
     void on_button_StartServer_clicked();
-
     void on_button_StopServer_clicked();
 
-private:
-    Ui::MainWindow *ui;
+    void on_button_BackToRooms_clicked();
+    void on_list_Rooms_doubleClicked(const QModelIndex &index);
 };
 
 #endif // MAINWINDOW_H

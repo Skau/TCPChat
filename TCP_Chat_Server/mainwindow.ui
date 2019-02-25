@@ -6,44 +6,98 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>388</width>
-    <height>401</height>
+    <width>399</width>
+    <height>454</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="1">
+   <layout class="QVBoxLayout" name="verticalLayout_4">
+    <item>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
-       <widget class="QLabel" name="label_Clients">
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
+       <widget class="QStackedWidget" name="stacked_RoomsClients">
+        <property name="currentIndex">
+         <number>0</number>
         </property>
-        <property name="text">
-         <string>Connected clients</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
+        <widget class="QWidget" name="page_Rooms">
+         <layout class="QGridLayout" name="gridLayout_2">
+          <item row="0" column="0">
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <widget class="QLabel" name="label_Rooms">
+              <property name="font">
+               <font>
+                <pointsize>14</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Rooms</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="list_Rooms"/>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="page_Clients">
+         <layout class="QGridLayout" name="gridLayout">
+          <item row="0" column="0">
+           <layout class="QVBoxLayout" name="verticalLayout_6">
+            <item>
+             <widget class="QLabel" name="label_Clients">
+              <property name="font">
+               <font>
+                <pointsize>14</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Connected clients</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="list_Clients"/>
+            </item>
+            <item>
+             <widget class="QPushButton" name="button_BackToRooms">
+              <property name="text">
+               <string>Back to rooms</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
        </widget>
       </item>
       <item>
-       <widget class="QListWidget" name="list_Clients"/>
+       <layout class="QHBoxLayout" name="horizontalLayout_5"/>
       </item>
       <item>
        <spacer name="verticalSpacer">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
         </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
         <property name="sizeHint" stdset="0">
          <size>
           <width>20</width>
-          <height>40</height>
+          <height>9</height>
          </size>
         </property>
        </spacer>
@@ -168,7 +222,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>388</width>
+     <width>399</width>
      <height>20</height>
     </rect>
    </property>

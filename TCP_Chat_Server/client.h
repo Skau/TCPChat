@@ -8,12 +8,18 @@ class Client : public QObject
 {
     Q_OBJECT
 
+private:
+    qint16 id_;
+    QString name_;
+    QTcpSocket* socket_;
+
 public:
-    Client(const QString& name, QTcpSocket* socket);
+    Client(const qint16& id, const QString name, QTcpSocket* socket);
     ~Client();
 
-    const QString& getName() { return name_; }
-    QTcpSocket* getSocket() { return socket_; }
+    const qint16& getID() const { return id_; }
+    const QString& getName() const { return name_; }
+    QTcpSocket* getSocket() const { return socket_; }
 
 signals:
     void newDataAvailable(Client* client);
@@ -21,9 +27,6 @@ signals:
 private slots:
     void readyRead();
 
-private:
-    QString name_;
-    QTcpSocket* socket_;
 };
 
 #endif // CLIENT_H
