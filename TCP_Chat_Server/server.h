@@ -60,6 +60,7 @@ public:
 private:
     void removeClients();
     void removeRooms();
+    void readJson(const QJsonDocument& document);
 
 signals:
     void newConnectionAdded(const std::shared_ptr<Client>& client);
@@ -74,7 +75,7 @@ public slots:
     void stopServer();
     void newConnection();
     void acceptError(QAbstractSocket::SocketError socketError) const;
-    void readyRead(Client *client) const;
+    void readyRead(Client *client);
     void createRoom(const QString& name, const RoomType& type = RoomType::Public, const std::vector<std::shared_ptr<Client>>& allowedClients = {}, const std::vector<std::shared_ptr<Client>>& clients = {});
     void selectedRoom(const int& index);
 

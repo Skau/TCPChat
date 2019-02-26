@@ -21,20 +21,21 @@ void Client::connectToServer(const QString& name, const QHostAddress &ip, const 
 {
     name_ = name;
 
-    qDebug() << "Name: " << name_ << ", IP: " << ip.toString() << ", Port: " << port;
-
     socket_.connectToHost(ip, port);
-    qDebug() << socket_.write(name_.toStdString().c_str());
+
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::Connected)));
+    object.insert("Name", QJsonValue(name_));
+    QJsonDocument document(object);
+
+    socket_.write(document.toJson());
 }
 
 void Client::sendMessage(const QString &message)
 {
-    qDebug() << message;
-
     QJsonObject object;
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::Message)));
     object.insert("Message", QJsonValue(message));
-
     QJsonDocument document(object);
 
     socket_.write(document.toJson());

@@ -27,11 +27,13 @@ void Server::startServer(const QHostAddress& address, const quint16& port)
     proxy.setPort(port);
     server_.setProxy(proxy);
 
+    // Start listening for incoming connections
     if(!server_.listen(address, port))
     {
         emit listenError();
     }
 
+    // Create initial room
     createRoom("Main Room");
 }
 
@@ -52,38 +54,57 @@ void Server::newConnection()
 
     // Get name of new client
     socket->waitForReadyRead(); // Blocking
-    auto newClientName = socket->readAll();
-
-    // Create client
-    ++idCounterClient_;
-    auto client = std::make_shared<Client>(idCounterClient_, newClientName, socket);
-    connect(client.get(), &Client::newDataAvailable, this, &Server::readyRead);
-
-    // Send all connected client names to new client
-    if(clients_.size())
+    QString data = socket->readAll();
+    QJsonParseError error;
+    QJsonDocument document = QJsonDocument::fromJson(data.toUtf8(), &error);
+    if(!document.isNull())
     {
-        QString message = "newall";
-        for(auto& connectedClient : clients_)
+        if(document.isObject())
         {
-            message += connectedClient->getName() + " ";
+            auto object = document.object();
+            if(!object.isEmpty())
+            {
+                auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
+                if(contentType == Contents::Connected)
+                {
+                    auto name = object.find("Name").value().toString();
+                    // Create client
+                    ++idCounterClient_;
+                    auto client = std::make_shared<Client>(idCounterClient_, name, socket);
+                    connect(client.get(), &Client::newDataAvailable, this, &Server::readyRead);
+
+                    // Send all connected client names to new client
+                    if(clients_.size())
+                    {
+                        QString message = "newall";
+                        for(auto& connectedClient : clients_)
+                        {
+                            message += connectedClient->getName() + " ";
+                        }
+                        qDebug() << message;
+                        client->write(message);
+                    }
+
+                    // Add client to clients_
+                    clients_.push_back(client);
+                    rooms_[0]->connectedClients.push_back(client);
+                    emit newConnectionAdded(client);
+
+                    emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
+
+                    // Send name of new client to all connected clients
+                    QString message = QString("new" + name);
+                    for(auto& connectedClient : clients_)
+                    {
+                        connectedClient->write(message);
+                    }
+                }
+            }
         }
-        qDebug() << message;
-        client->write(message);
     }
-
-    // Add client to clients_
-    clients_.push_back(client);
-    rooms_[0]->connectedClients.push_back(client);
-    emit newConnectionAdded(client);
-
-    emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
-
-
-    // Send name of new client to all connected clients
-    QString message = QString("new" + newClientName);
-    for(auto& connectedClient : clients_)
+    else
     {
-        connectedClient->write(message);
+        qDebug() << "[New Connection] JSON doc is null: " + error.errorString();
     }
 }
 
@@ -95,7 +116,7 @@ void Server::acceptError(QAbstractSocket::SocketError socketError) const
 }
 
 // Slot
-void Server::readyRead(Client* client) const
+void Server::readyRead(Client* client)
 {
     QJsonParseError error;
     QJsonDocument document = QJsonDocument::fromJson(client->read().toUtf8(), &error);
@@ -107,51 +128,20 @@ void Server::readyRead(Client* client) const
             if(!object.isEmpty())
             {
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-                switch (contentType)
-                {
-                case Contents::Message:
+                if(contentType == Contents::Message)
                 {
                     auto message = QString(client->getName() + ": " + object.find("Message").value().toString());
                     for(auto& connectedClient : clients_)
                     {
                         connectedClient->write(message);
                     }
-                    break;
                 }
-                case Contents::Connected:
-                {
-                    break;
-                }
-                case Contents::Disconnected:
-                {
-                    break;
-                }
-                case Contents::NewRoom:
-                {
-                    break;
-                }
-                case Contents::JoinedRoom:
-                {
-                    break;
-                }
-                case Contents::LeftRoom:
-                {
-                    break;
-                }
-                }
-
             }
-            else {
-                qDebug() << "Is empty";
-            }
-
-        }
-        else {
-            qDebug() << "Is not object";
         }
     }
-    else {
-        qDebug() << "Is null: " + error.errorString();
+    else
+    {
+        qDebug() << "[Ready Read] JSON doc is null: " + error.errorString();
     }
 }
 
@@ -185,4 +175,52 @@ void Server::removeRooms()
         room.reset();
     }
     rooms_.clear();
+}
+
+// Not in use
+void Server::readJson(const QJsonDocument &document)
+{
+    if(document.isObject())
+    {
+        auto object = document.object();
+        if(!object.isEmpty())
+        {
+            auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
+            switch (contentType)
+            {
+            case Contents::Message:
+            {
+                break;
+            }
+            case Contents::Connected:
+            {
+                break;
+            }
+            case Contents::Disconnected:
+            {
+                break;
+            }
+            case Contents::NewRoom:
+            {
+                break;
+            }
+            case Contents::JoinedRoom:
+            {
+                break;
+            }
+            case Contents::LeftRoom:
+            {
+                break;
+            }
+            }
+        }
+        else
+        {
+            qDebug() << "Is empty";
+        }
+    }
+    else
+    {
+        qDebug() << "Is not object";
+    }
 }
