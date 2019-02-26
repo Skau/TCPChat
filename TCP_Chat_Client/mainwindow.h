@@ -16,7 +16,7 @@ public:
     ~MainWindow();
 
 signals:
-    void messageSent(const QString& message);
+    void sendMessage(const QString& message);
 
 public slots:
     void addMessage(const QString& message);

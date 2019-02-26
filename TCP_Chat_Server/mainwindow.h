@@ -5,8 +5,8 @@
 #include <QHostAddress>
 #include <memory>
 
-#include "client.h"
-#include "server.h"
+class Client;
+struct ChatRoom;
 
 namespace Ui {
 class MainWindow;

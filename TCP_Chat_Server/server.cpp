@@ -1,6 +1,8 @@
 #include "server.h"
 #include <QDebug>
 #include <QNetworkProxy>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "client.h"
 
@@ -71,10 +73,10 @@ void Server::newConnection()
 
     // Add client to clients_
     clients_.push_back(client);
-    rooms_[0]->clients.push_back(client);
+    rooms_[0]->connectedClients.push_back(client);
     emit newConnectionAdded(client);
 
-    emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->clients.size()) + "]"), 0);
+    emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
 
 
     // Send name of new client to all connected clients
@@ -95,17 +97,67 @@ void Server::acceptError(QAbstractSocket::SocketError socketError) const
 // Slot
 void Server::readyRead(Client* client) const
 {
-    auto message = QString(client->getName() + ": " + client->read());
-
-    for(auto& connectedClient : clients_)
+    QJsonParseError error;
+    QJsonDocument document = QJsonDocument::fromJson(client->read().toUtf8(), &error);
+    if(!document.isNull())
     {
-        connectedClient->write(message);
+        if(document.isObject())
+        {
+            auto object = document.object();
+            if(!object.isEmpty())
+            {
+                auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
+                switch (contentType)
+                {
+                case Contents::Message:
+                {
+                    auto message = QString(client->getName() + ": " + object.find("Message").value().toString());
+                    for(auto& connectedClient : clients_)
+                    {
+                        connectedClient->write(message);
+                    }
+                    break;
+                }
+                case Contents::Connected:
+                {
+                    break;
+                }
+                case Contents::Disconnected:
+                {
+                    break;
+                }
+                case Contents::NewRoom:
+                {
+                    break;
+                }
+                case Contents::JoinedRoom:
+                {
+                    break;
+                }
+                case Contents::LeftRoom:
+                {
+                    break;
+                }
+                }
+
+            }
+            else {
+                qDebug() << "Is empty";
+            }
+
+        }
+        else {
+            qDebug() << "Is not object";
+        }
+    }
+    else {
+        qDebug() << "Is null: " + error.errorString();
     }
 }
 
-void Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client> > &clients)
+void Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client>>& allowedClients, const std::vector<std::shared_ptr<Client>> &clients)
 {
-    rooms_.emplace_back(std::make_shared<ChatRoom>(rooms_.size() + 1, name, type, clients));
+    rooms_.emplace_back(std::make_shared<ChatRoom>(rooms_.size() + 1, name, type, allowedClients, clients));
     emit addRoom(name + " [" + QString::number(clients.size()) + "]");
 }
 

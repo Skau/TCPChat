@@ -26,5 +26,5 @@ void MainWindow::addNewClient(const QString &name)
 void MainWindow::on_button_SendMessage_clicked()
 {
     auto message = ui->textEdit_Input->toPlainText();
-    emit messageSent(message);
+    emit sendMessage(message);
 }

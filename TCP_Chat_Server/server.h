@@ -30,10 +30,16 @@ struct ChatRoom
     unsigned int ID;
     QString name;
     RoomType type;
-    std::vector<std::shared_ptr<Client>> clients;
 
-    ChatRoom(const unsigned int& idIn, const QString& nameIn, const RoomType& typeIn = RoomType::Public, const std::vector<std::shared_ptr<Client>>& clientsIn = {})
-        : ID(idIn), name(nameIn), type(typeIn), clients(clientsIn)
+    std::vector<std::shared_ptr<Client>> allowedClients;
+    std::vector<std::shared_ptr<Client>> connectedClients;
+
+    ChatRoom(const unsigned int& idIn,
+             const QString& nameIn,
+             const RoomType& typeIn = RoomType::Public,
+             const std::vector<std::shared_ptr<Client>>& allowedClientsIn = {},
+             const std::vector<std::shared_ptr<Client>>& clientsIn = {})
+        : ID(idIn), name(nameIn), type(typeIn), allowedClients(allowedClientsIn), connectedClients(clientsIn)
     {}
 };
 
@@ -69,7 +75,7 @@ public slots:
     void newConnection();
     void acceptError(QAbstractSocket::SocketError socketError) const;
     void readyRead(Client *client) const;
-    void createRoom(const QString& name, const RoomType& type = RoomType::Public, const std::vector<std::shared_ptr<Client>>& clients = {});
+    void createRoom(const QString& name, const RoomType& type = RoomType::Public, const std::vector<std::shared_ptr<Client>>& allowedClients = {}, const std::vector<std::shared_ptr<Client>>& clients = {});
     void selectedRoom(const int& index);
 
 };

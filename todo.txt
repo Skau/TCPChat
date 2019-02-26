@@ -1,0 +1,44 @@
+
+*** PRIORITY ***
+  - JSON.
+  - Rooms.
+
+
+***** GENERAL *****
+  - Admin functionality.
+  - JSON for all communication client <---> server (priority).
+  - Not only text support (long term).
+
+Known bugs:
+  -
+
+
+
+***** SERVER SIDE *****
+  - Not only LAN support (Long term).
+
+Known bugs:
+ - Stop server not working correctly (clients can still talk to each other).
+
+
+
+***** CLIENT SIDE *****
+
+- Change name.
+- Disconnect properly without exiting.
+- Room functionality (priority)
+  Create:
+    Button to start process.
+    Prompt asking for some properties (name, type etc).
+    Maybe support for checking off who will join the room too.
+    PM support.
+    Tabs / a way to move between rooms.
+    Creator becomes admin.
+  Leave:
+    Button to leave room.
+    Gets moved back to main room.
+    If last person in room, delete it.
+  Join:
+    Only public rooms should be visible/joinable
+
+Known bugs:

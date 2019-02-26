@@ -70,7 +70,7 @@
          <item>
           <widget class="QLineEdit" name="line_IP">
            <property name="text">
-            <string/>
+            <string>192.168.1.242</string>
            </property>
            <property name="placeholderText">
             <string/>

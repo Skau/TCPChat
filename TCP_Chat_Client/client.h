@@ -7,6 +7,22 @@
 
 #include "mainwindow.h"
 
+enum class Contents
+{
+    Message,      // Client
+    Connected,    // Server
+    Disconnected, // Server
+    NewRoom,      // Client
+    JoinedRoom,   // Client
+    LeftRoom      // Client
+};
+
+enum class RoomType
+{
+    Public,
+    Private
+};
+
 class Client : public QObject
 {
     Q_OBJECT
@@ -26,7 +42,7 @@ signals:
 
 public slots:
     void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
-    void messageSent(const QString& message);
+    void sendMessage(const QString& message);
 
 private slots:
     __attribute__((noreturn)) void error(QAbstractSocket::SocketError socketError);

@@ -2,6 +2,8 @@
 #include <QDebug>
 #include <string>
 #include <sstream>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 Client::Client()
 {
@@ -25,10 +27,17 @@ void Client::connectToServer(const QString& name, const QHostAddress &ip, const 
     qDebug() << socket_.write(name_.toStdString().c_str());
 }
 
-void Client::messageSent(const QString &message)
+void Client::sendMessage(const QString &message)
 {
     qDebug() << message;
-    socket_.write(message.toStdString().c_str());
+
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::Message)));
+    object.insert("Message", QJsonValue(message));
+
+    QJsonDocument document(object);
+
+    socket_.write(document.toJson());
 }
 
 
@@ -49,7 +58,7 @@ void Client::connected()
     qDebug() << "Connected";
 
     mainWindow_ = new MainWindow(name_);
-    connect(mainWindow_, &MainWindow::messageSent, this, &Client::messageSent);
+    connect(mainWindow_, &MainWindow::sendMessage, this, &Client::sendMessage);
     connect(this, &Client::addMessage, mainWindow_, &MainWindow::addMessage);
     connect(this, &Client::addNewClient, mainWindow_, &MainWindow::addNewClient);
 

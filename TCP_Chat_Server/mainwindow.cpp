@@ -1,9 +1,11 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "client.h"
+#include "server.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow)
+    ui(new Ui::MainWindow), currentRoomID_(-1)
 {
     ui->setupUi(this);
 
@@ -52,7 +54,7 @@ void MainWindow::addClientNames(std::shared_ptr<ChatRoom> room)
     if(room.get())
     {
         ui->list_Clients->clear();
-        for(auto& client : room->clients)
+        for(auto& client : room->connectedClients)
         {
             ui->list_Clients->addItem(client->getName() + " (" + QString::number(client->getID()) + ")");
         }
@@ -91,14 +93,14 @@ void MainWindow::on_button_StopServer_clicked()
 
 void MainWindow::on_button_BackToRooms_clicked()
 {
-    currentRoomID_ = 0;
+    currentRoomID_ = -1;
     ui->stacked_RoomsClients->setCurrentIndex(0);
     ui->list_Clients->clear();
 }
 
 void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
 {
-    currentRoomID_ = index.row() + 1;
+    currentRoomID_ = index.row();
 
     std::string name = ui->list_Rooms->item(index.row())->text().toStdString();
     name = name.substr(0, name.find("["));
@@ -106,5 +108,5 @@ void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
 
     ui->stacked_RoomsClients->setCurrentIndex(1);
 
-    emit selectedRoom(currentRoomID_ - 1);
+    emit selectedRoom(currentRoomID_);
 }
