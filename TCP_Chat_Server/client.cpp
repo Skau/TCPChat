@@ -7,7 +7,7 @@ Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(i
 
 Client::~Client()
 {
-    socket_->disconnectFromHost();
+    socket_->disconnectFromHost(); // ?
     socket_->close();
     delete socket_;
     socket_ = nullptr;

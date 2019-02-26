@@ -13,6 +13,7 @@ Server::Server() : idCounter_(-1)
 Server::~Server()
 {
     removeClients();
+    exit(0);
 }
 
 void Server::startServer(const QHostAddress& address, const quint16& port)

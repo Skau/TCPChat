@@ -31,6 +31,7 @@ void Client::messageSent(const QString &message)
     socket_.write(message.toStdString().c_str());
 }
 
+
 __attribute__((noreturn)) void Client::error(QAbstractSocket::SocketError socketError)
 {
     qDebug() << "Connection error: " << socketError;
@@ -60,38 +61,35 @@ void Client::readyRead()
 {
     auto message = socket_.readAll().toStdString();
 
-    std::string n = "newall";
-    auto found = message.find(n);
-    if(found != std::string::npos)
+    if(tryToRemovePart(message, "newall"))
     {
-        message.replace(found, n.length(), "");
         std::stringstream ss(message);
         std::string s;
         while (getline(ss, s, ' '))
         {
-            n = "new";
-            found = s.find(n);
-            if(found != std::string::npos)
-            {
-                s.replace(found, n.length(), "");
-            }
+            tryToRemovePart(s, "new");
             emit addNewClient(QString(s.c_str()));
         }
     }
+    else if(tryToRemovePart(message, "new"))
+    {
+        emit addNewClient(QString(message.c_str()));
+    }
     else
     {
-        n = "new";
-        found = message.find(n);
-        if(found != std::string::npos)
-        {
-            message.replace(found, n.length(), "");
-            emit addNewClient(QString(message.c_str()));
-        }
-        else
-        {
-            emit addMessage(QString(message.c_str()));
-        }
+        emit addMessage(QString(message.c_str()));
     }
 
     qDebug() << message.c_str();
+}
+
+bool Client::tryToRemovePart(std::string &string, const std::string &toRemove)
+{
+    auto found = string.find(toRemove);
+    if(found != std::string::npos)
+    {
+        string.replace(found, toRemove.length(), "");
+        return true;
+    }
+    return false;
 }

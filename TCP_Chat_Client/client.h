@@ -11,6 +11,11 @@ class Client : public QObject
 {
     Q_OBJECT
 
+private:
+    QString name_;
+    QTcpSocket socket_;
+    MainWindow* mainWindow_;
+
 public:
     Client();
     virtual ~Client();
@@ -30,9 +35,7 @@ private slots:
     void readyRead();
 
 private:
-    QString name_;
-    QTcpSocket socket_;
-    MainWindow* mainWindow_;
+    bool tryToRemovePart(std::string& string, const std::string& toRemove);
 
 };
 
