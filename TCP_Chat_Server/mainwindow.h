@@ -3,6 +3,9 @@
 
 #include <QMainWindow>
 #include <QHostAddress>
+#include <memory>
+
+#include "client.h"
 
 namespace Ui {
 class MainWindow;
@@ -26,12 +29,12 @@ signals:
     void selectedRoom(const int& index);
 
 public slots:
-    void newConnectionAdded(const QString& name);
+    void newConnectionAdded(const std::shared_ptr<Client>& client);
     void acceptError(QAbstractSocket::SocketError error);
     void listenError();
     void addRoom(const QString& name);
     void changeRoomName(const QString& newName, int index);
-    void addClientNames(const QString &roomName, const std::vector<QString>& names);
+    void addClientNames(const QString &roomName, const std::vector<std::shared_ptr<Client>>& clients);
 
 private slots:
     void on_button_StartServer_clicked();

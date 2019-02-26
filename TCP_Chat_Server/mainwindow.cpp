@@ -16,12 +16,12 @@ MainWindow::~MainWindow()
     exit(0);
 }
 
-void MainWindow::newConnectionAdded(const QString &name)
+void MainWindow::newConnectionAdded(const std::shared_ptr<Client>& client)
 {
     ui->statusBar->showMessage("New client connected", 2000);
     if(currentRoom_ == "Main Room")
     {
-        ui->list_Clients->addItem(name);
+        ui->list_Clients->addItem(client->getName() + " (" + QString::number(client->getID()) + ")");
     }
 }
 
@@ -47,14 +47,14 @@ void MainWindow::changeRoomName(const QString &newName, int index)
     room->setText(newName);
 }
 
-void MainWindow::addClientNames(const QString& roomName, const std::vector<QString> &names)
+void MainWindow::addClientNames(const QString& roomName, const std::vector<std::shared_ptr<Client>>& clients)
 {
     currentRoom_ = roomName;
 
     ui->list_Clients->clear();
-    for(auto& name : names)
+    for(auto& client : clients)
     {
-        ui->list_Clients->addItem(name);
+        ui->list_Clients->addItem(client->getName() + " (" + QString::number(client->getID()) + ")");
     }
 }
 

@@ -33,11 +33,11 @@ private:
     void removeClients();
 
 signals:
-    void newConnectionAdded(const QString& name);
+    void newConnectionAdded(const std::shared_ptr<Client>& client);
     void listenError();
     void acceptClientError(QAbstractSocket::SocketError error) const;
     void addRoom(const QString& name);
-    void addClientNames(const QString& roomName, const std::vector<QString>& names);
+    void addClientNames(const QString& roomName, const std::vector<std::shared_ptr<Client>>& clients);
     void changeRoomName(const QString& newName, int index);
 
 public slots:

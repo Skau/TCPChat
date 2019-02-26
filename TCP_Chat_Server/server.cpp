@@ -4,7 +4,7 @@
 
 #include "client.h"
 
-Server::Server() : idCounter_(-1)
+Server::Server() : idCounter_(0)
 {    
     connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
     connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
@@ -16,6 +16,7 @@ Server::~Server()
     exit(0);
 }
 
+// Slot
 void Server::startServer(const QHostAddress& address, const quint16& port)
 {
     qDebug() << "Start server";
@@ -36,12 +37,14 @@ void Server::startServer(const QHostAddress& address, const quint16& port)
     emit addRoom(room.name);
 }
 
+// Slot
 void Server::stopServer()
 {
     server_.close();
     removeClients();
 }
 
+// Slot
 void Server::newConnection()
 {
     // Get next pending client
@@ -66,13 +69,13 @@ void Server::newConnection()
             message += connectedClient->getName() + " ";
         }
         qDebug() << message;
-        client->getSocket()->write(message.toStdString().c_str());
+        client->write(message);
     }
 
     // Add client to clients_
     clients_.push_back(client);
     rooms_[0].clients.push_back(client);
-    emit newConnectionAdded(newClientName);
+    emit newConnectionAdded(client);
 
     emit changeRoomName(QString(rooms_[0].name + " [" + QString::number(rooms_[0].clients.size()) + "]"), 0);
 
@@ -81,37 +84,34 @@ void Server::newConnection()
     QString message = QString("new" + newClientName);
     for(auto& connectedClient : clients_)
     {
-        connectedClient->getSocket()->write(message.toStdString().c_str());
+        connectedClient->write(message);
     }
 }
 
+// Slot
 void Server::acceptError(QAbstractSocket::SocketError socketError) const
 {
     qDebug() << "Accept error: " << socketError;
     emit acceptClientError(socketError);
 }
 
+// Slot
 void Server::readyRead(Client* client) const
 {
-    auto message = QString(client->getName() + ": " + client->getSocket()->readAll()).toStdString().c_str();
+    auto message = QString(client->getName() + ": " + client->read());
 
     for(auto& connectedClient : clients_)
     {
-        connectedClient->getSocket()->write(message);
+        connectedClient->write(message);
     }
 }
 
+// Slot
 void Server::selectedRoom(const int &index)
 {
     auto room = rooms_[static_cast<unsigned int>(index)];
-    std::vector<QString> names;
 
-    for(auto& client : room.clients)
-    {
-        names.push_back(client->getName());
-    }
-
-    emit addClientNames(room.name, names);
+    emit addClientNames(room.name, room.clients);
 }
 
 void Server::removeClients()

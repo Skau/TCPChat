@@ -19,7 +19,9 @@ public:
 
     const qint16& getID() const { return id_; }
     const QString& getName() const { return name_; }
-    QTcpSocket* getSocket() const { return socket_; }
+
+    void write(const QString& message);
+    QString read();
 
 signals:
     void newDataAvailable(Client* client);

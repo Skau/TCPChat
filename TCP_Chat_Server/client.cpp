@@ -13,6 +13,16 @@ Client::~Client()
     socket_ = nullptr;
 }
 
+void Client::write(const QString &message)
+{
+    socket_->write(message.toStdString().c_str());
+}
+
+QString Client::read()
+{
+    return socket_->readAll();
+}
+
 void Client::readyRead()
 {
     newDataAvailable(this);
