@@ -1,0 +1,10 @@
+{
+  "Contents": "3",
+  "RoomName": "room",
+  "Type" : "0",
+  "ClientIDs" : [
+      "1",
+      "2",
+      "3"
+  ]
+}

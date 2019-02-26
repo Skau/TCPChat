@@ -4,7 +4,7 @@
 
 #include "client.h"
 
-Server::Server() : idCounter_(0)
+Server::Server() : idCounterClient_(0)
 {    
     connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
     connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
@@ -12,7 +12,6 @@ Server::Server() : idCounter_(0)
 
 Server::~Server()
 {
-    removeClients();
     exit(0);
 }
 
@@ -31,10 +30,7 @@ void Server::startServer(const QHostAddress& address, const quint16& port)
         emit listenError();
     }
 
-    ChatRoom room;
-    room.name = "Main Room";
-    rooms_.push_back(room);
-    emit addRoom(room.name);
+    createRoom("Main Room");
 }
 
 // Slot
@@ -42,6 +38,7 @@ void Server::stopServer()
 {
     server_.close();
     removeClients();
+    removeRooms();
 }
 
 // Slot
@@ -56,8 +53,8 @@ void Server::newConnection()
     auto newClientName = socket->readAll();
 
     // Create client
-    ++idCounter_;
-    auto client = std::make_shared<Client>(idCounter_, newClientName, socket);
+    ++idCounterClient_;
+    auto client = std::make_shared<Client>(idCounterClient_, newClientName, socket);
     connect(client.get(), &Client::newDataAvailable, this, &Server::readyRead);
 
     // Send all connected client names to new client
@@ -74,10 +71,10 @@ void Server::newConnection()
 
     // Add client to clients_
     clients_.push_back(client);
-    rooms_[0].clients.push_back(client);
+    rooms_[0]->clients.push_back(client);
     emit newConnectionAdded(client);
 
-    emit changeRoomName(QString(rooms_[0].name + " [" + QString::number(rooms_[0].clients.size()) + "]"), 0);
+    emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->clients.size()) + "]"), 0);
 
 
     // Send name of new client to all connected clients
@@ -106,12 +103,18 @@ void Server::readyRead(Client* client) const
     }
 }
 
+void Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client> > &clients)
+{
+    rooms_.emplace_back(std::make_shared<ChatRoom>(rooms_.size() + 1, name, type, clients));
+    emit addRoom(name + " [" + QString::number(clients.size()) + "]");
+}
+
 // Slot
 void Server::selectedRoom(const int &index)
 {
     auto room = rooms_[static_cast<unsigned int>(index)];
 
-    emit addClientNames(room.name, room.clients);
+    emit addClientNames(room);
 }
 
 void Server::removeClients()
@@ -121,4 +124,13 @@ void Server::removeClients()
         client.reset();
     }
     clients_.clear();
+}
+
+void Server::removeRooms()
+{
+    for(auto& room : rooms_)
+    {
+        room.reset();
+    }
+    rooms_.clear();
 }

@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "client.h"
+#include "server.h"
 
 namespace Ui {
 class MainWindow;
@@ -17,7 +18,7 @@ class MainWindow : public QMainWindow
 
 private:
     Ui::MainWindow *ui;
-    QString currentRoom_;
+    int currentRoomID_;
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
@@ -34,7 +35,7 @@ public slots:
     void listenError();
     void addRoom(const QString& name);
     void changeRoomName(const QString& newName, int index);
-    void addClientNames(const QString &roomName, const std::vector<std::shared_ptr<Client>>& clients);
+    void addClientNames(std::shared_ptr<ChatRoom> room);
 
 private slots:
     void on_button_StartServer_clicked();

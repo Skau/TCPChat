@@ -3,7 +3,7 @@
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow), currentRoom_("")
+    ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
@@ -19,7 +19,7 @@ MainWindow::~MainWindow()
 void MainWindow::newConnectionAdded(const std::shared_ptr<Client>& client)
 {
     ui->statusBar->showMessage("New client connected", 2000);
-    if(currentRoom_ == "Main Room")
+    if(currentRoomID_ == 0)
     {
         ui->list_Clients->addItem(client->getName() + " (" + QString::number(client->getID()) + ")");
     }
@@ -43,18 +43,19 @@ void MainWindow::addRoom(const QString &name)
 
 void MainWindow::changeRoomName(const QString &newName, int index)
 {
-    auto room = ui->list_Rooms->item(index);
-    room->setText(newName);
+    auto text = ui->list_Rooms->item(index);
+    text->setText(newName);
 }
 
-void MainWindow::addClientNames(const QString& roomName, const std::vector<std::shared_ptr<Client>>& clients)
+void MainWindow::addClientNames(std::shared_ptr<ChatRoom> room)
 {
-    currentRoom_ = roomName;
-
-    ui->list_Clients->clear();
-    for(auto& client : clients)
+    if(room.get())
     {
-        ui->list_Clients->addItem(client->getName() + " (" + QString::number(client->getID()) + ")");
+        ui->list_Clients->clear();
+        for(auto& client : room->clients)
+        {
+            ui->list_Clients->addItem(client->getName() + " (" + QString::number(client->getID()) + ")");
+        }
     }
 }
 
@@ -81,23 +82,29 @@ void MainWindow::on_button_StopServer_clicked()
 {
     ui->label_Status->setText("Server status: Disconnected");
     ui->statusBar->showMessage("Server disconnected", 2000);
+
+    ui->list_Rooms->clear();
+    ui->stacked_RoomsClients->setCurrentIndex(0);
     ui->list_Clients->clear();
     emit stopServer();
 }
 
 void MainWindow::on_button_BackToRooms_clicked()
 {
-    currentRoom_ = "";
+    currentRoomID_ = 0;
     ui->stacked_RoomsClients->setCurrentIndex(0);
+    ui->list_Clients->clear();
 }
 
 void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
 {
-    emit selectedRoom(index.row());
+    currentRoomID_ = index.row() + 1;
 
     std::string name = ui->list_Rooms->item(index.row())->text().toStdString();
     name = name.substr(0, name.find("["));
-
     ui->label_Clients->setText(QString(name.c_str()));
+
     ui->stacked_RoomsClients->setCurrentIndex(1);
+
+    emit selectedRoom(currentRoomID_ - 1);
 }
