@@ -72,6 +72,7 @@ void Server::newConnection()
                     ++idCounterClient_;
                     auto client = std::make_shared<Client>(idCounterClient_, name, socket);
                     connect(client.get(), &Client::newDataAvailable, this, &Server::readyRead);
+                    connect(client.get(), &Client::clientDisconnected, this, &Server::disconnected);
 
                     // Send all connected client names to new client
                     if(clients_.size())
@@ -88,6 +89,7 @@ void Server::newConnection()
                     // Add client to clients_
                     clients_.push_back(client);
                     rooms_[0]->connectedClients.push_back(client);
+                    client->setRoomID(0);
                     emit newConnectionAdded(client);
 
                     emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
@@ -116,10 +118,13 @@ void Server::acceptError(QAbstractSocket::SocketError socketError) const
 }
 
 // Slot
-void Server::readyRead(Client* client)
+void Server::readyRead(std::shared_ptr<Client> client)
 {
     QJsonParseError error;
     QJsonDocument document = QJsonDocument::fromJson(client->read().toUtf8(), &error);
+
+    qDebug() << "JSON doc: " << document;
+
     if(!document.isNull())
     {
         if(document.isObject())
@@ -137,6 +142,14 @@ void Server::readyRead(Client* client)
                     }
                 }
             }
+            else
+            {
+                qDebug() << "[Ready Read] JSON object is empty";
+            }
+        }
+        else
+        {
+           qDebug() << "[Ready Read] JSON document is not an object";
         }
     }
     else
@@ -147,7 +160,7 @@ void Server::readyRead(Client* client)
 
 void Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client>>& allowedClients, const std::vector<std::shared_ptr<Client>> &clients)
 {
-    rooms_.emplace_back(std::make_shared<ChatRoom>(rooms_.size() + 1, name, type, allowedClients, clients));
+    rooms_.emplace_back(std::make_shared<ChatRoom>(rooms_.size(), name, type, allowedClients, clients));
     emit addRoom(name + " [" + QString::number(clients.size()) + "]");
 }
 
@@ -157,6 +170,16 @@ void Server::selectedRoom(const int &index)
     auto room = rooms_[static_cast<unsigned int>(index)];
 
     emit addClientNames(room);
+}
+
+void Server::disconnected(std::shared_ptr<Client> client)
+{
+    qDebug() << client->getName() << " disconnected";
+    emit clientDisconnected(client);
+    //rooms_[0]->connectedClients.erase(std::remove(rooms_[0]->connectedClients.begin(), rooms_[0]->connectedClients.end(), client), rooms_[0]->connectedClients.end());
+    clients_.erase(std::remove(clients_.begin(), clients_.end(), client), clients_.end());
+    client.reset();
+    emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
 }
 
 void Server::removeClients()
@@ -193,10 +216,6 @@ void Server::readJson(const QJsonDocument &document)
                 break;
             }
             case Contents::Connected:
-            {
-                break;
-            }
-            case Contents::Disconnected:
             {
                 break;
             }

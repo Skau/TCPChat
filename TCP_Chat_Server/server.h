@@ -13,7 +13,6 @@ enum class Contents
 {
     Message,      // Client
     Connected,    // Server
-    Disconnected, // Server
     NewRoom,      // Client
     JoinedRoom,   // Client
     LeftRoom      // Client
@@ -27,14 +26,14 @@ enum class RoomType
 
 struct ChatRoom
 {
-    unsigned int ID;
+    int ID;
     QString name;
     RoomType type;
 
     std::vector<std::shared_ptr<Client>> allowedClients;
     std::vector<std::shared_ptr<Client>> connectedClients;
 
-    ChatRoom(const unsigned int& idIn,
+    ChatRoom(const int& idIn,
              const QString& nameIn,
              const RoomType& typeIn = RoomType::Public,
              const std::vector<std::shared_ptr<Client>>& allowedClientsIn = {},
@@ -64,6 +63,7 @@ private:
 
 signals:
     void newConnectionAdded(const std::shared_ptr<Client>& client);
+    void clientDisconnected(std::shared_ptr<Client> client);
     void listenError();
     void acceptClientError(QAbstractSocket::SocketError error) const;
     void addRoom(const QString& name);
@@ -75,9 +75,12 @@ public slots:
     void stopServer();
     void newConnection();
     void acceptError(QAbstractSocket::SocketError socketError) const;
-    void readyRead(Client *client);
+    void readyRead(std::shared_ptr<Client> client);
     void createRoom(const QString& name, const RoomType& type = RoomType::Public, const std::vector<std::shared_ptr<Client>>& allowedClients = {}, const std::vector<std::shared_ptr<Client>>& clients = {});
     void selectedRoom(const int& index);
+
+private slots:
+    void disconnected(std::shared_ptr<Client> client);
 
 };
 

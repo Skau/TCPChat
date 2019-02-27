@@ -21,9 +21,10 @@ MainWindow::~MainWindow()
 void MainWindow::newConnectionAdded(const std::shared_ptr<Client>& client)
 {
     ui->statusBar->showMessage("New client connected", 2000);
-    if(currentRoomID_ == 0)
+    if(currentRoomID_ == client->getRoomID())
     {
         ui->list_Clients->addItem(client->getName() + " (" + QString::number(client->getID()) + ")");
+
     }
 }
 
@@ -51,7 +52,8 @@ void MainWindow::changeRoomName(const QString &newName, int index)
 
 void MainWindow::addClientNames(std::shared_ptr<ChatRoom> room)
 {
-    if(room.get())
+    qDebug() << "roomID: " << currentRoomID_;
+    if(room.get() && currentRoomID_ == room->ID)
     {
         ui->list_Clients->clear();
         for(auto& client : room->connectedClients)
@@ -60,6 +62,33 @@ void MainWindow::addClientNames(std::shared_ptr<ChatRoom> room)
         }
     }
 }
+
+void MainWindow::removeClientName(std::shared_ptr<Client> client)
+{
+    qDebug() << "Current room id: " << currentRoomID_ << ", client room id: " << client->getRoomID();
+    if(currentRoomID_ == client->getRoomID())
+    {
+        for(int i = 0; i < ui->list_Clients->count(); ++i)
+        {
+            auto item = ui->list_Clients->item(i);
+            auto name = item->text().toStdString();
+            auto pos = name.find("(");
+            if(pos != std::string::npos)
+            {
+                name.replace(pos - 1, name.length(), "");
+
+                qDebug() << "Name: " << QString(name.c_str()) << "client name: " << client->getName();
+
+                if(QString(name.c_str()) == client->getName())
+                {
+                    qDebug() << "Yes";
+                    ui->list_Clients->takeItem(i);
+                }
+            }
+        }
+    }
+}
+
 
 void MainWindow::on_button_StartServer_clicked()
 {
@@ -73,6 +102,7 @@ void MainWindow::on_button_StartServer_clicked()
         emit startServer(ip, port);
         ui->statusBar->showMessage("Server connected", 2000);
         ui->label_Status->setText("Server status: Connected");
+        qDebug() << "Jammen halLO?";
     }
     else
     {
@@ -101,6 +131,7 @@ void MainWindow::on_button_BackToRooms_clicked()
 void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
 {
     currentRoomID_ = index.row();
+    qDebug() << "roomID: " << currentRoomID_;
 
     std::string name = ui->list_Rooms->item(index.row())->text().toStdString();
     name = name.substr(0, name.find("["));
@@ -108,5 +139,5 @@ void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
 
     ui->stacked_RoomsClients->setCurrentIndex(1);
 
-    emit selectedRoom(currentRoomID_);
+    emit selectedRoom(index.row());
 }

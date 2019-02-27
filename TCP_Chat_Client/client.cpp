@@ -10,11 +10,13 @@ Client::Client()
     connect(&socket_,  QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error), this, &Client::error);
     connect(&socket_, &QTcpSocket::hostFound, this, &Client::hostFound);
     connect(&socket_, &QTcpSocket::connected, this, &Client::connected);
+    connect(&socket_, &QTcpSocket::disconnected, this, &Client::disconnected);
     connect(&socket_, &QTcpSocket::readyRead, this, &Client::readyRead);
 }
 
 Client::~Client()
 {
+    socket_.disconnectFromHost();
 }
 
 void Client::connectToServer(const QString& name, const QHostAddress &ip, const quint16 &port)
@@ -65,6 +67,17 @@ void Client::connected()
 
     mainWindow_->setWindowTitle(name_);
     mainWindow_->show();
+}
+
+void Client::disconnected()
+{
+    qDebug() << "Disconnected";
+
+//    QJsonObject object;
+//    object.insert("Contents", QJsonValue(static_cast<int>(Contents::Disconnected)));
+//    QJsonDocument document(object);
+
+//    socket_.write(document.toJson());
 }
 
 void Client::readyRead()

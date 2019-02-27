@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
 
     QObject::connect(&w, &MainWindow::startServer, &s, &Server::startServer);
     QObject::connect(&s, &Server::newConnectionAdded, &w, &MainWindow::newConnectionAdded);
+    QObject::connect(&s, &Server::clientDisconnected, &w, &MainWindow::removeClientName);
     QObject::connect(&s, &Server::acceptClientError, &w, &MainWindow::acceptError);
     QObject::connect(&s, &Server::listenError, &w, &MainWindow::listenError);
     QObject::connect(&s, &Server::addRoom, &w, &MainWindow::addRoom);

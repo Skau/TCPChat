@@ -13,6 +13,7 @@ MainWindow::MainWindow(const QString &name, QWidget *parent) :
     connect(filter, &InputFilter::sendMessage, this, &MainWindow::on_button_SendMessage_clicked);
 
     ui->textEdit_Input->installEventFilter(filter);
+
 }
 
 MainWindow::~MainWindow()
@@ -41,4 +42,9 @@ void MainWindow::on_button_SendMessage_clicked()
         ui->textEdit_Input->clear();
         emit sendMessage(message);
     }
+}
+
+void MainWindow::on_actionDisconnect_triggered()
+{
+    qDebug() << "Hallo";
 }

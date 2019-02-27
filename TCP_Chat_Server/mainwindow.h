@@ -36,6 +36,7 @@ public slots:
     void addRoom(const QString& name);
     void changeRoomName(const QString& newName, int index);
     void addClientNames(std::shared_ptr<ChatRoom> room);
+    void removeClientName(std::shared_ptr<Client> client);
 
 private slots:
     void on_button_StartServer_clicked();

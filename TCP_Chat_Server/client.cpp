@@ -3,6 +3,7 @@
 Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(id), name_(name), socket_(socket)
 {
     connect(socket, &QTcpSocket::readyRead, this, &Client::readyRead);
+    connect(socket, &QTcpSocket::disconnected, this, &Client::disconnected);
 }
 
 Client::~Client()
@@ -25,5 +26,10 @@ QString Client::read()
 
 void Client::readyRead()
 {
-    newDataAvailable(this);
+    newDataAvailable(shared_from_this());
+}
+
+void Client::disconnected()
+{
+    emit clientDisconnected(shared_from_this());
 }

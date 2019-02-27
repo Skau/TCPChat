@@ -24,6 +24,7 @@ public slots:
 
 private slots:
     void on_button_SendMessage_clicked();
+    void on_actionDisconnect_triggered();
 
 private:
     Ui::MainWindow *ui;

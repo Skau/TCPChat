@@ -11,7 +11,6 @@ enum class Contents
 {
     Message,      // Client
     Connected,    // Server
-    Disconnected, // Server
     NewRoom,      // Client
     JoinedRoom,   // Client
     LeftRoom      // Client
@@ -43,6 +42,7 @@ signals:
 public slots:
     void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
     void sendMessage(const QString& message);
+    void disconnected();
 
 private slots:
     __attribute__((noreturn)) void error(QAbstractSocket::SocketError socketError);
