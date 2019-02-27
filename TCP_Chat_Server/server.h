@@ -40,6 +40,11 @@ struct ChatRoom
              const std::vector<std::shared_ptr<Client>>& clientsIn = {})
         : ID(idIn), name(nameIn), type(typeIn), allowedClients(allowedClientsIn), connectedClients(clientsIn)
     {}
+
+    void remove(std::shared_ptr<Client> client)
+    {
+        connectedClients.erase(std::remove(connectedClients.begin(), connectedClients.end(), client), connectedClients.end());
+    }
 };
 
 class Server : public QObject
@@ -60,6 +65,7 @@ private:
     void removeClients();
     void removeRooms();
     void readJson(const QJsonDocument& document);
+    int getRoomIndex(std::shared_ptr<ChatRoom> room);
 
 signals:
     void newConnectionAdded(const std::shared_ptr<Client>& client);

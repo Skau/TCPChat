@@ -5,6 +5,8 @@
 #include <QTcpSocket>
 #include <memory>
 
+struct ChatRoom;
+
 class Client : public QObject, public std::enable_shared_from_this<Client>
 {
     Q_OBJECT
@@ -13,7 +15,7 @@ private:
     qint16 id_;
     QString name_;
     QTcpSocket* socket_;
-    int roomID_;
+    std::shared_ptr<ChatRoom> room_;
 
 public:
     Client(const qint16& id, const QString name, QTcpSocket* socket);
@@ -22,8 +24,8 @@ public:
     const qint16& getID() const { return id_; }
     const QString& getName() const { return name_; }
 
-    const int& getRoomID() { return roomID_; }
-    void setRoomID(const int& ID) { roomID_ = ID; }
+    std::shared_ptr<ChatRoom> getRoom() { return room_; }
+    void setRoom(std::shared_ptr<ChatRoom> room) { room_ = room; }
 
     void write(const QString& message);
     QString read();

@@ -4,14 +4,13 @@ Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(i
 {
     connect(socket, &QTcpSocket::readyRead, this, &Client::readyRead);
     connect(socket, &QTcpSocket::disconnected, this, &Client::disconnected);
+    connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
 }
 
 Client::~Client()
 {
     socket_->disconnectFromHost(); // ?
     socket_->close();
-    delete socket_;
-    socket_ = nullptr;
 }
 
 void Client::write(const QString &message)

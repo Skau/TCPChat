@@ -39,7 +39,7 @@ color: rgb(239,239,239);
 border: none;</string>
            </property>
            <property name="text">
-            <string/>
+            <string>anon</string>
            </property>
            <property name="placeholderText">
             <string/>
@@ -71,7 +71,7 @@ color: rgb(239,239,239);
 border: none;</string>
            </property>
            <property name="text">
-            <string/>
+            <string>127.0.0.1</string>
            </property>
            <property name="placeholderText">
             <string/>

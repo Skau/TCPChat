@@ -141,7 +141,7 @@
              </font>
             </property>
             <property name="text">
-             <string/>
+             <string>127.0.0.1</string>
             </property>
            </widget>
           </item>

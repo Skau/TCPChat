@@ -89,7 +89,7 @@ void Server::newConnection()
                     // Add client to clients_
                     clients_.push_back(client);
                     rooms_[0]->connectedClients.push_back(client);
-                    client->setRoomID(0);
+                    client->setRoom(rooms_[0]);
                     emit newConnectionAdded(client);
 
                     emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
@@ -102,6 +102,14 @@ void Server::newConnection()
                     }
                 }
             }
+            else
+            {
+                qDebug() << "[New Connection] JSON object is empty";
+            }
+        }
+        else
+        {
+            qDebug() << "[New Connection] JSON document is not an object";
         }
     }
     else
@@ -149,7 +157,7 @@ void Server::readyRead(std::shared_ptr<Client> client)
         }
         else
         {
-           qDebug() << "[Ready Read] JSON document is not an object";
+            qDebug() << "[Ready Read] JSON document is not an object";
         }
     }
     else
@@ -176,10 +184,16 @@ void Server::disconnected(std::shared_ptr<Client> client)
 {
     qDebug() << client->getName() << " disconnected";
     emit clientDisconnected(client);
-    //rooms_[0]->connectedClients.erase(std::remove(rooms_[0]->connectedClients.begin(), rooms_[0]->connectedClients.end(), client), rooms_[0]->connectedClients.end());
+
+    auto room = client->getRoom();
+    room->remove(client);
     clients_.erase(std::remove(clients_.begin(), clients_.end(), client), clients_.end());
     client.reset();
-    emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
+    auto index = getRoomIndex(room);
+    if(index >= 0)
+    {
+        emit changeRoomName(QString(room->name + " [" + QString::number(room->connectedClients.size()) + "]"), index);
+    }
 }
 
 void Server::removeClients()
@@ -242,4 +256,17 @@ void Server::readJson(const QJsonDocument &document)
     {
         qDebug() << "Is not object";
     }
+}
+
+int Server::getRoomIndex(std::shared_ptr<ChatRoom> room)
+{
+    for(unsigned int i = 0; i < rooms_.size(); ++i)
+    {
+        if(room->ID == rooms_[i]->ID)
+        {
+            return static_cast<int>(i);
+        }
+    }
+
+    return -1;
 }
