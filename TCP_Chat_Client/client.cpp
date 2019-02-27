@@ -6,8 +6,13 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
-Client::Client()
+#include "mainwindow.h"
+#include "connectiondialog.h"
+
+Client::Client(ConnectionDialog *connectionDialog) : connectionDialog_(connectionDialog)
 {
+    connect(connectionDialog_, &ConnectionDialog::connectToServer, this, &Client::connectToServer);
+
     connect(&socket_,  QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error), this, &Client::error);
     connect(&socket_, &QTcpSocket::hostFound, this, &Client::hostFound);
     connect(&socket_, &QTcpSocket::connected, this, &Client::connected);
@@ -17,7 +22,7 @@ Client::Client()
 
 Client::~Client()
 {
-    socket_.disconnectFromHost();
+    disconnected();
 }
 
 void Client::connectToServer(const QString& name, const QHostAddress &ip, const quint16 &port)
@@ -62,6 +67,7 @@ void Client::connected()
     qDebug() << "Connected";
 
     mainWindow_ = new MainWindow(name_);
+    connect(mainWindow_, &MainWindow::disconnected, this, &Client::disconnected);
     connect(mainWindow_, &MainWindow::sendMessage, this, &Client::sendMessage);
     connect(this, &Client::addMessage, mainWindow_, &MainWindow::addMessage);
     connect(this, &Client::addNewClient, mainWindow_, &MainWindow::addNewClient);
@@ -72,13 +78,10 @@ void Client::connected()
 
 void Client::disconnected()
 {
-    qDebug() << "Disconnected";
+    socket_.disconnectFromHost();
 
-//    QJsonObject object;
-//    object.insert("Contents", QJsonValue(static_cast<int>(Contents::Disconnected)));
-//    QJsonDocument document(object);
-
-//    socket_.write(document.toJson());
+    mainWindow_->hide();
+    connectionDialog_->show();
 }
 
 void Client::readyRead()

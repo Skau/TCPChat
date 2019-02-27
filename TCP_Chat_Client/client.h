@@ -5,7 +5,8 @@
 #include <QTcpSocket>
 #include <QHostAddress>
 
-#include "mainwindow.h"
+class MainWindow;
+class ConnectionDialog;
 
 enum class Contents
 {
@@ -30,15 +31,18 @@ class Client : public QObject
 private:
     QString name_;
     QTcpSocket socket_;
+    ConnectionDialog* connectionDialog_;
     MainWindow* mainWindow_;
 
+
 public:
-    Client();
+    Client(ConnectionDialog* connectionDialog);
     virtual ~Client();
 
 signals:
     void addMessage(const QString& message);
     void addNewClient(const QString& name);
+    void onDisconnected();
 
 public slots:
     void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);

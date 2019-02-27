@@ -1,23 +1,16 @@
 #include <QApplication>
-#include <QObject>
-
-#include "mainwindow.h"
-#include "connectiondialog.h"
 #include "client.h"
-
-#include <QTcpServer>
+#include "connectiondialog.h"
 
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    ConnectionDialog dialog;
-    dialog.show();
+    ConnectionDialog* dialog = new ConnectionDialog();
+    dialog->show();
 
-    Client c;
-
-    QObject::connect(&dialog, &ConnectionDialog::connectToServer, &c, &Client::connectToServer);
+    Client c(dialog);
 
     return a.exec();
 }

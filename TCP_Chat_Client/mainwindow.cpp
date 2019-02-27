@@ -10,7 +10,7 @@ MainWindow::MainWindow(const QString &name, QWidget *parent) :
 
     InputFilter* filter = new InputFilter();
 
-    connect(filter, &InputFilter::sendMessage, this, &MainWindow::on_button_SendMessage_clicked);
+    connect(filter, &InputFilter::sendMessage, this, &MainWindow::onSendMessage);
 
     ui->textEdit_Input->installEventFilter(filter);
 
@@ -38,8 +38,7 @@ void MainWindow::addNewClient(const QString &name)
     ui->list_Clients->addItem(name);
 }
 
-
-void MainWindow::on_button_SendMessage_clicked()
+void MainWindow::onSendMessage()
 {
     auto message = ui->textEdit_Input->toPlainText();
     if(message.size())
@@ -51,5 +50,6 @@ void MainWindow::on_button_SendMessage_clicked()
 
 void MainWindow::on_actionDisconnect_triggered()
 {
-    qDebug() << "Hallo";
+    qDebug() << "Disconnect triggered";
+    emit disconnected();
 }
