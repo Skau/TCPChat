@@ -26,10 +26,6 @@ private slots:
     void on_button_SendMessage_clicked();
 
 private:
-    void keyReleaseEvent(QKeyEvent * ke) override;
-    void keyPressEvent(QKeyEvent* ke) override;
-
-    bool shiftHeld_;
     Ui::MainWindow *ui;
     QString name_;
 };

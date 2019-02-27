@@ -28,12 +28,14 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     client.cpp \
-    connectiondialog.cpp
+    connectiondialog.cpp \
+    inputfilter.cpp
 
 HEADERS += \
         mainwindow.h \
     client.h \
-    connectiondialog.h
+    connectiondialog.h \
+    inputfilter.h
 
 FORMS += \
         mainwindow.ui \
