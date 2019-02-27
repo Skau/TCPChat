@@ -20,9 +20,9 @@ signals:
     void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
 
 private slots:
-   void on_button_Connect_clicked();
+    void on_button_Connect_clicked();
 
-  __attribute__((noreturn)) void on_button_Exit_clicked();
+    __attribute__((noreturn)) void on_button_Exit_clicked();
 
 private:
     Ui::ConnectionDialog *ui;

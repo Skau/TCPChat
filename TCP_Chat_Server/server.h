@@ -42,6 +42,19 @@ struct ChatRoom
         : ID(idIn), name(nameIn), type(typeIn), allowedClients(allowedClientsIn), connectedClients(clientsIn)
     {}
 
+    ~ChatRoom()
+    {
+        for(auto& client : allowedClients)
+        {
+            client.reset();
+        }
+        allowedClients.clear();
+        for(auto& client : connectedClients)
+        {
+            client.reset();
+        }
+        connectedClients.clear();
+    }
     void remove(std::shared_ptr<Client> client)
     {
         connectedClients.erase(std::remove(connectedClients.begin(), connectedClients.end(), client), connectedClients.end());

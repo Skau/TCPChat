@@ -39,10 +39,16 @@ void Server::startServer(const QHostAddress& address, const quint16& port)
 
 // Slot
 void Server::stopServer()
-{
-    server_.close();
+{    
+    if(server_.isListening())
+    {
+        server_.close();
+    }
+
     removeClients();
     removeRooms();
+
+    exit(0);
 }
 
 // Slot
@@ -169,20 +175,23 @@ void Server::selectedRoom(const int &index)
 
 void Server::disconnected(std::shared_ptr<Client> client)
 {
-    qDebug() << client->getName() << " disconnected";
-    emit clientDisconnected(client);
-
-    auto room = client->getRoom();
-    room->remove(client);
-    clients_.erase(std::remove(clients_.begin(), clients_.end(), client), clients_.end());
-    client.reset();
-    auto index = getRoomIndex(room);
-    if(index >= 0)
+    if(client.get() && server_.isListening())
     {
-        emit changeRoomName(QString(room->name + " [" + QString::number(room->connectedClients.size()) + "]"), index);
-    }
+        qDebug() << client->getName() << " disconnected";
+        emit clientDisconnected(client);
 
-    updateClientNames();
+        auto room = client->getRoom();
+        room->remove(client);
+        clients_.erase(std::remove(clients_.begin(), clients_.end(), client), clients_.end());
+        client.reset();
+        auto index = getRoomIndex(room);
+        if(index >= 0)
+        {
+            emit changeRoomName(QString(room->name + " [" + QString::number(room->connectedClients.size()) + "]"), index);
+        }
+
+        updateClientNames();
+    }
 }
 
 void Server::removeClients()

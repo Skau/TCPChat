@@ -34,9 +34,12 @@ signals:
     void newDataAvailable(std::shared_ptr<Client> client);
     void clientDisconnected(std::shared_ptr<Client> client);
 
+public slots:
+    void disconnected();
+
 private slots:
     void readyRead();
-    void disconnected();
+
 
 };
 

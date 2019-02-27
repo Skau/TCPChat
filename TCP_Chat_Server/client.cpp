@@ -9,26 +9,44 @@ Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(i
 
 Client::~Client()
 {
-    socket_->disconnectFromHost(); // ?
-    socket_->close();
+    if(socket_)
+    {
+       socket_->disconnectFromHost();
+    }
 }
 
 void Client::write(const QString &message)
 {
-    socket_->write(message.toStdString().c_str());
+    if(socket_)
+    {
+        socket_->write(message.toStdString().c_str());
+    }
 }
 
 QString Client::read()
 {
-    return socket_->readAll();
+    if(socket_)
+    {
+        return socket_->readAll();
+    }
+    else
+    {
+        return "";
+    }
 }
 
 void Client::readyRead()
 {
-    newDataAvailable(shared_from_this());
+    if(socket_)
+    {
+        newDataAvailable(shared_from_this());
+    }
 }
 
 void Client::disconnected()
 {
-    emit clientDisconnected(shared_from_this());
+    if(socket_)
+    {
+       emit clientDisconnected(shared_from_this());
+    }
 }

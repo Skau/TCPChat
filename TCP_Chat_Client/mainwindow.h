@@ -11,6 +11,10 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+private:
+    Ui::MainWindow *ui;
+    QString name_;
+
 public:
     explicit MainWindow(const QString& name, QWidget *parent = nullptr);
     ~MainWindow();
@@ -28,10 +32,6 @@ public slots:
 private slots:
     void onSendMessage();
     void on_actionDisconnect_triggered();
-
-private:
-    Ui::MainWindow *ui;
-    QString name_;
 };
 
 #endif // MAINWINDOW_H

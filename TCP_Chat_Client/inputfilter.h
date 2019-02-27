@@ -7,6 +7,9 @@ class InputFilter : public QObject
 {
     Q_OBJECT
 
+private:
+    bool shiftHeld_;
+
 public:
     InputFilter();
 
@@ -16,8 +19,6 @@ signals:
 protected:
     bool eventFilter(QObject* obj, QEvent* event);
 
-private:
-     bool shiftHeld_;
 };
 
 #endif // INPUTFILTER_H

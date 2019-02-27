@@ -1,4 +1,5 @@
 #include "client.h"
+#include <QApplication>
 #include <QDebug>
 #include <string>
 #include <sstream>
@@ -89,7 +90,15 @@ void Client::disconnected()
     socket_.disconnectFromHost();
 
     mainWindow_->hide();
-    connectionDialog_->show();
+    if(mainWindow_->isActiveWindow())
+    {
+        connectionDialog_->showMaximized();
+    }
+    else
+    {
+        connectionDialog_->showMinimized();
+        QApplication::alert(connectionDialog_.get());
+    }
 }
 
 void Client::readyRead()
