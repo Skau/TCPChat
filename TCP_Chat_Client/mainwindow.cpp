@@ -23,6 +23,7 @@ MainWindow::~MainWindow()
 void MainWindow::addMessage(const QString &message)
 {
     ui->textEdit_Chat->appendPlainText(message);
+    QApplication::alert(this);
 
 }
 
@@ -30,7 +31,6 @@ void MainWindow::addNewClient(const QString &name)
 {
     ui->list_Clients->addItem(name);
 }
-
 
 
 void MainWindow::on_button_SendMessage_clicked()
