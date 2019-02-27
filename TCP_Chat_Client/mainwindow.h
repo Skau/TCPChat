@@ -15,6 +15,8 @@ public:
     explicit MainWindow(const QString& name, QWidget *parent = nullptr);
     ~MainWindow();
 
+    void clearClientNames();
+
 signals:
     void sendMessage(const QString& message);
 

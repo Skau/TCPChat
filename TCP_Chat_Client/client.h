@@ -9,11 +9,12 @@
 
 enum class Contents
 {
-    Message,      // Client
-    Connected,    // Server
-    NewRoom,      // Client
-    JoinedRoom,   // Client
-    LeftRoom      // Client
+    Message,      // Client <-> Server
+    Connected,    // Server <-> Client
+    NewRoom,      // Client -> Server
+    JoinedRoom,   // Client -> Server
+    LeftRoom,     // Client -> Server
+    ClientNames   // Server -> Client
 };
 
 enum class RoomType

@@ -1,5 +1,5 @@
 {
-  "Contents": "3",
+  "Contents": "enum value",
   "RoomName": "room",
   "Type" : "0",
   "ClientIDs" : [

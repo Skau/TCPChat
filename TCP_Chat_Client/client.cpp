@@ -4,6 +4,7 @@
 #include <sstream>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 
 Client::Client()
 {
@@ -82,28 +83,51 @@ void Client::disconnected()
 
 void Client::readyRead()
 {
-    auto message = socket_.readAll().toStdString();
+    auto data = socket_.readAll();
+    QJsonParseError error;
+    QJsonDocument document = QJsonDocument::fromJson(QString(data).toUtf8(), &error);
 
-    if(tryToRemovePart(message, "newall"))
+    qDebug() << "JSON doc: " << document;
+
+    if(!document.isNull())
     {
-        std::stringstream ss(message);
-        std::string s;
-        while (getline(ss, s, ' '))
+        if(document.isObject())
         {
-            tryToRemovePart(s, "new");
-            emit addNewClient(QString(s.c_str()));
+            auto object = document.object();
+            if(!object.isEmpty())
+            {
+                auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
+                if(contentType == Contents::Message)
+                {
+                    auto message = object.find("message").value().toString();
+                    emit addMessage(message);
+                }
+                else if(contentType == Contents::ClientNames)
+                {
+                    mainWindow_->clearClientNames();
+                    auto names = object.find("Names")->toArray();
+                    for(auto nameElement : names)
+                    {
+                        auto nameObj = nameElement.toObject();
+                        auto n = nameObj.find("Name");
+                        emit addNewClient(n.value().toString());
+                    }
+                }
+            }
+            else
+            {
+                qDebug() << "[Ready Read] JSON object is empty";
+            }
         }
-    }
-    else if(tryToRemovePart(message, "new"))
-    {
-        emit addNewClient(QString(message.c_str()));
+        else
+        {
+            qDebug() << "[Ready Read] JSON document is not an object";
+        }
     }
     else
     {
-        emit addMessage(QString(message.c_str()));
+        qDebug() << "[Ready Read] JSON doc is null: " + error.errorString();
     }
-
-    qDebug() << message.c_str();
 }
 
 bool Client::tryToRemovePart(std::string &string, const std::string &toRemove)

@@ -11,11 +11,12 @@ class Client;
 
 enum class Contents
 {
-    Message,      // Client
-    Connected,    // Server
-    NewRoom,      // Client
-    JoinedRoom,   // Client
-    LeftRoom      // Client
+    Message,      // Client <-> Server
+    Connected,    // Server <-> Client
+    NewRoom,      // Client -> Server
+    JoinedRoom,   // Client -> Server
+    LeftRoom,     // Client -> Server
+    ClientNames   // Server -> Client
 };
 
 enum class RoomType
@@ -64,8 +65,8 @@ public:
 private:
     void removeClients();
     void removeRooms();
-    void readJson(const QJsonDocument& document);
     int getRoomIndex(std::shared_ptr<ChatRoom> room);
+    void updateClientNames();
 
 signals:
     void newConnectionAdded(const std::shared_ptr<Client>& client);

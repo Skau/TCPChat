@@ -21,6 +21,11 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::clearClientNames()
+{
+    ui->list_Clients->clear();
+}
+
 void MainWindow::addMessage(const QString &message)
 {
     ui->textEdit_Chat->appendPlainText(message);

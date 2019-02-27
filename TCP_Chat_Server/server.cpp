@@ -3,7 +3,7 @@
 #include <QNetworkProxy>
 #include <QJsonDocument>
 #include <QJsonObject>
-
+#include <QJsonArray>
 #include "client.h"
 
 Server::Server() : idCounterClient_(0)
@@ -67,39 +67,23 @@ void Server::newConnection()
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
                 if(contentType == Contents::Connected)
                 {
+                    // Get name chosen for new client
                     auto name = object.find("Name").value().toString();
-                    // Create client
+
+                    // Create and setup new client
                     ++idCounterClient_;
                     auto client = std::make_shared<Client>(idCounterClient_, name, socket);
                     connect(client.get(), &Client::newDataAvailable, this, &Server::readyRead);
                     connect(client.get(), &Client::clientDisconnected, this, &Server::disconnected);
 
-                    // Send all connected client names to new client
-                    if(clients_.size())
-                    {
-                        QString message = "newall";
-                        for(auto& connectedClient : clients_)
-                        {
-                            message += connectedClient->getName() + " ";
-                        }
-                        qDebug() << message;
-                        client->write(message);
-                    }
-
-                    // Add client to clients_
+                    // Add client
                     clients_.push_back(client);
                     rooms_[0]->connectedClients.push_back(client);
                     client->setRoom(rooms_[0]);
                     emit newConnectionAdded(client);
-
                     emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
 
-                    // Send name of new client to all connected clients
-                    QString message = QString("new" + name);
-                    for(auto& connectedClient : clients_)
-                    {
-                        connectedClient->write(message);
-                    }
+                    updateClientNames();
                 }
             }
             else
@@ -143,10 +127,13 @@ void Server::readyRead(std::shared_ptr<Client> client)
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
                 if(contentType == Contents::Message)
                 {
-                    auto message = QString(client->getName() + ": " + object.find("Message").value().toString());
+                    QJsonObject newObject;
+                    newObject.insert("Contents", QJsonValue(static_cast<int>(contentType)));
+                    newObject.insert("Message", QJsonValue(QString(client->getName() + ": " + object.find("Message").value().toString())));
+                    QJsonDocument document(newObject);
                     for(auto& connectedClient : clients_)
                     {
-                        connectedClient->write(message);
+                        connectedClient->write(document.toJson());
                     }
                 }
             }
@@ -194,6 +181,8 @@ void Server::disconnected(std::shared_ptr<Client> client)
     {
         emit changeRoomName(QString(room->name + " [" + QString::number(room->connectedClients.size()) + "]"), index);
     }
+
+    updateClientNames();
 }
 
 void Server::removeClients()
@@ -214,50 +203,6 @@ void Server::removeRooms()
     rooms_.clear();
 }
 
-// Not in use
-void Server::readJson(const QJsonDocument &document)
-{
-    if(document.isObject())
-    {
-        auto object = document.object();
-        if(!object.isEmpty())
-        {
-            auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-            switch (contentType)
-            {
-            case Contents::Message:
-            {
-                break;
-            }
-            case Contents::Connected:
-            {
-                break;
-            }
-            case Contents::NewRoom:
-            {
-                break;
-            }
-            case Contents::JoinedRoom:
-            {
-                break;
-            }
-            case Contents::LeftRoom:
-            {
-                break;
-            }
-            }
-        }
-        else
-        {
-            qDebug() << "Is empty";
-        }
-    }
-    else
-    {
-        qDebug() << "Is not object";
-    }
-}
-
 int Server::getRoomIndex(std::shared_ptr<ChatRoom> room)
 {
     for(unsigned int i = 0; i < rooms_.size(); ++i)
@@ -269,4 +214,28 @@ int Server::getRoomIndex(std::shared_ptr<ChatRoom> room)
     }
 
     return -1;
+}
+
+void Server::updateClientNames()
+{
+    if(clients_.size())
+    {
+        QJsonObject object;
+        object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientNames)));
+
+        QJsonArray names;
+        for(auto& connectedClient : clients_)
+        {
+            QJsonObject nameObj;
+            nameObj.insert("Name", QJsonValue(connectedClient->getName()));
+            names.push_back(nameObj);
+        }
+        object.insert("Names", names);
+
+        QJsonDocument document(object);
+        for(auto& connectedClient : clients_)
+        {
+            connectedClient->write(document.toJson());
+        }
+    }
 }
