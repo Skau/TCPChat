@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QTcpSocket>
 #include <QHostAddress>
+#include <memory>
 
 class MainWindow;
 class ConnectionDialog;
@@ -31,18 +32,17 @@ class Client : public QObject
 private:
     QString name_;
     QTcpSocket socket_;
-    ConnectionDialog* connectionDialog_;
-    MainWindow* mainWindow_;
+    std::shared_ptr<ConnectionDialog> connectionDialog_;
+    std::unique_ptr<MainWindow> mainWindow_;
 
 
 public:
-    Client(ConnectionDialog* connectionDialog);
+    Client(std::shared_ptr<ConnectionDialog> connectionDialog);
     virtual ~Client();
 
 signals:
     void addMessage(const QString& message);
     void addNewClient(const QString& name);
-    void onDisconnected();
 
 public slots:
     void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
@@ -50,13 +50,10 @@ public slots:
     void disconnected();
 
 private slots:
-    __attribute__((noreturn)) void error(QAbstractSocket::SocketError socketError);
+    void error(QAbstractSocket::SocketError socketError);
     void hostFound();
     void connected();
     void readyRead();
-
-private:
-    bool tryToRemovePart(std::string& string, const std::string& toRemove);
 
 };
 

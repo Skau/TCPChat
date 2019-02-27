@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    ConnectionDialog* dialog = new ConnectionDialog();
+    auto dialog = std::make_shared<ConnectionDialog>();
     dialog->show();
 
     Client c(dialog);

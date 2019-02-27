@@ -31,8 +31,6 @@ void ConnectionDialog::on_button_Connect_clicked()
         qDebug() << "Port is not all numeric";
         exit(0);
     }
-
-    hide();
 }
 
 __attribute__((noreturn)) void ConnectionDialog::on_button_Exit_clicked()

@@ -19,6 +19,7 @@ MainWindow::MainWindow(const QString &name, QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+    exit(0);
 }
 
 void MainWindow::clearClientNames()
