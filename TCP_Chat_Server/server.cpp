@@ -142,6 +142,49 @@ void Server::readyRead(std::shared_ptr<Client> client)
                         connectedClient->write(document.toJson());
                     }
                 }
+                else if(contentType == Contents::NewRoom)
+                {
+                    auto roomName = object.find("RoomName").value().toString();
+
+                    auto clientIndexes = object.find("ClientIndexes").value().toArray();
+
+                    std::shared_ptr<ChatRoom> room;
+
+                    // If only one name, it means pm
+                    if(clientIndexes.size() == 1)
+                    {
+                        // Get other client
+                        auto clientIndexObject = clientIndexes[0].toObject();
+                        auto index = clientIndexObject.find("Index").value().toInt();
+                        auto otherClient = clients_[static_cast<unsigned>(index)];
+
+                        // Return if trying to make pm with itself
+                        if(client->getID() == otherClient->getID()) { return; }
+
+                        // Create the room
+                        room = createRoom(
+                                    "PM (" + client->getName() + " and " + otherClient->getName() + ")",
+                                    RoomType::Private,
+                                    {client, otherClient},
+                                    {client, otherClient}
+                                  );
+                    }
+
+                    // If no names
+                    else if(!clientIndexes.size())
+                    {
+                        room = createRoom(object.find("RoomName").value().toString(), RoomType::Public, {client}, {client});
+                    }
+
+                    // Send room info back to the clients
+                    if(room.get())
+                    {
+                        for(auto& c : room->allowedClients)
+                        {
+                            // TODO: Finish this
+                        }
+                    }
+                }
             }
             else
             {
@@ -159,10 +202,12 @@ void Server::readyRead(std::shared_ptr<Client> client)
     }
 }
 
-void Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client>>& allowedClients, const std::vector<std::shared_ptr<Client>> &clients)
+std::shared_ptr<ChatRoom> Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client>>& allowedClients, const std::vector<std::shared_ptr<Client>> &clients)
 {
     rooms_.emplace_back(std::make_shared<ChatRoom>(rooms_.size(), name, type, allowedClients, clients));
     emit addRoom(name + " [" + QString::number(clients.size()) + "]");
+
+    return rooms_.back();
 }
 
 // Slot

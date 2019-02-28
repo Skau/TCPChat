@@ -13,7 +13,7 @@ enum class Contents
 {
     Message,      // Client <-> Server
     Connected,    // Server <-> Client
-    NewRoom,      // Client -> Server
+    NewRoom,      // Client <-> Server
     JoinedRoom,   // Client -> Server
     LeftRoom,     // Client -> Server
     ClientNames   // Server -> Client
@@ -96,7 +96,7 @@ public slots:
     void newConnection();
     void acceptError(QAbstractSocket::SocketError socketError) const;
     void readyRead(std::shared_ptr<Client> client);
-    void createRoom(const QString& name, const RoomType& type = RoomType::Public, const std::vector<std::shared_ptr<Client>>& allowedClients = {}, const std::vector<std::shared_ptr<Client>>& clients = {});
+    std::shared_ptr<ChatRoom> createRoom(const QString& name, const RoomType& type = RoomType::Public, const std::vector<std::shared_ptr<Client>>& allowedClients = {}, const std::vector<std::shared_ptr<Client>>& clients = {});
     void selectedRoom(const int& index);
 
 private slots:

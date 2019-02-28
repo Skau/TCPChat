@@ -13,7 +13,8 @@ MainWindow::MainWindow(const QString &name, QWidget *parent) :
     connect(filter, &InputFilter::sendMessage, this, &MainWindow::onSendMessage);
 
     ui->textEdit_Input->installEventFilter(filter);
-
+    ui->list_Clients->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->list_Clients, &QWidget::customContextMenuRequested, this, &MainWindow::showCustomContextMenu);
 }
 
 MainWindow::~MainWindow()
@@ -53,4 +54,38 @@ void MainWindow::on_actionDisconnect_triggered()
 {
     qDebug() << "Disconnect triggered";
     emit disconnected();
+}
+
+void MainWindow::on_button_newRoom_clicked()
+{
+    qDebug() << "New room";
+    //emit newRoom();
+}
+
+void MainWindow::on_button_LeaveRoom_clicked()
+{
+    emit leftRoom();
+}
+
+void MainWindow::showCustomContextMenu(const QPoint& pos)
+{
+    auto items = ui->list_Clients->selectedItems();
+    if(items.size())
+    {
+        QPoint globalPos = ui->list_Clients->mapToGlobal(pos);
+        selectedName_ = ui->list_Clients->indexAt(pos).row();
+
+        QMenu menu;
+        menu.addAction("Send message", this, &MainWindow::sendMessageTrigger);
+
+        menu.exec(globalPos);
+    }
+}
+
+void MainWindow::sendMessageTrigger()
+{
+    qDebug() << selectedName_ << ", " << ui->list_Clients->item(selectedName_)->text();
+    auto otherClientName = ui->list_Clients->item(selectedName_)->text();
+    emit newRoom("otherClientName", {selectedName_});
+
 }

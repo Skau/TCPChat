@@ -77,6 +77,7 @@ void Client::connected()
         mainWindow_ = std::make_unique<MainWindow>(name_);
         connect(mainWindow_.get(), &MainWindow::disconnected, this, &Client::disconnected);
         connect(mainWindow_.get(), &MainWindow::sendMessage, this, &Client::sendMessage);
+        connect(mainWindow_.get(), &MainWindow::newRoom, this, &Client::newRoom);
         connect(this, &Client::addMessage, mainWindow_.get(), &MainWindow::addMessage);
         connect(this, &Client::addNewClient, mainWindow_.get(), &MainWindow::addNewClient);
     }
@@ -99,6 +100,25 @@ void Client::disconnected()
         connectionDialog_->showMinimized();
         QApplication::alert(connectionDialog_.get());
     }
+}
+
+void Client::newRoom(const QString &roomName, std::vector<int> clientIndexes)
+{
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::NewRoom)));
+    object.insert("RoomName", QJsonValue(roomName));
+
+    QJsonArray clients;
+    for(auto& index : clientIndexes)
+    {
+        QJsonObject obj;
+        obj.insert("Index", QJsonValue(index));
+        clients.push_back(obj);
+    }
+    object.insert("ClientIndexes", clients);
+
+    QJsonDocument doc(object);
+    socket_.write(doc.toJson());
 }
 
 void Client::readyRead()

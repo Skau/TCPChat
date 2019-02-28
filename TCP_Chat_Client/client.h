@@ -13,7 +13,7 @@ enum class Contents
 {
     Message,      // Client <-> Server
     Connected,    // Server <-> Client
-    NewRoom,      // Client -> Server
+    NewRoom,      // Client <-> Server
     JoinedRoom,   // Client -> Server
     LeftRoom,     // Client -> Server
     ClientNames   // Server -> Client
@@ -48,6 +48,7 @@ public slots:
     void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
     void sendMessage(const QString& message);
     void disconnected();
+    void newRoom(const QString& roomName, std::vector<int> clientIndexes);
 
 private slots:
     void error(QAbstractSocket::SocketError socketError);

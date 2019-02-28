@@ -24,6 +24,8 @@ public:
 signals:
     void sendMessage(const QString& message);
     void disconnected();
+    void newRoom(const QString& roomName, std::vector<int> clientIndexes);
+    void leftRoom();
 
 public slots:
     void addMessage(const QString& message);
@@ -32,6 +34,12 @@ public slots:
 private slots:
     void onSendMessage();
     void on_actionDisconnect_triggered();
+    void on_button_newRoom_clicked();
+    void on_button_LeaveRoom_clicked();
+    void showCustomContextMenu(const QPoint &pos);
+    void sendMessageTrigger();
+private:
+    int selectedName_;
 };
 
 #endif // MAINWINDOW_H
