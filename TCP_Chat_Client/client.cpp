@@ -119,7 +119,7 @@ void Client::readyRead()
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
                 if(contentType == Contents::Message)
                 {
-                    auto message = object.find("message").value().toString();
+                    auto message = object.find("Message").value().toString();
                     emit addMessage(message);
                 }
                 else if(contentType == Contents::ClientNames)
