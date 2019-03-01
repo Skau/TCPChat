@@ -20,6 +20,7 @@ public:
     ~MainWindow();
 
     void clearClientNames();
+    void clearChat();
 
 signals:
     void sendMessage(const QString& message);

@@ -91,6 +91,7 @@ void Client::disconnected()
     socket_.disconnectFromHost();
 
     mainWindow_->hide();
+
     if(mainWindow_->isActiveWindow())
     {
         connectionDialog_->showMaximized();

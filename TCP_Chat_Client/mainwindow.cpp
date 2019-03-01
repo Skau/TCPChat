@@ -28,6 +28,12 @@ void MainWindow::clearClientNames()
     ui->list_Clients->clear();
 }
 
+void MainWindow::clearChat()
+{
+    ui->textEdit_Chat->clear();
+    ui->textEdit_Input->clear();
+}
+
 void MainWindow::addMessage(const QString &message)
 {
     ui->textEdit_Chat->appendPlainText(message);

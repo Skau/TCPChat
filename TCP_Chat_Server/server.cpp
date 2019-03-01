@@ -182,6 +182,7 @@ void Server::readyRead(std::shared_ptr<Client> client)
                         for(auto& c : room->allowedClients)
                         {
                             // TODO: Finish this
+
                         }
                     }
                 }
