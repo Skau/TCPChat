@@ -12,7 +12,8 @@
 
 Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) : connectionDialog_(connectionDialog)
 {
-    connect(connectionDialog_.get(), &ConnectionDialog::connectToServer, this, &Client::connectToServer);
+    connect(connectionDialog_.get(), &ConnectionDialog::connectToServer, this, &Client::connectToHost);
+    connect(this, &Client::setCurrentConnectionStatus, connectionDialog_.get(), &ConnectionDialog::setStatus);
 
     connect(&socket_,  QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error), this, &Client::error);
     connect(&socket_, &QTcpSocket::hostFound, this, &Client::hostFound);
@@ -29,11 +30,23 @@ Client::~Client()
     connectionDialog_.reset();
 }
 
-void Client::connectToServer(const QString& name, const QHostAddress &ip, const quint16 &port)
+void Client::connectToHost(const QString& name, const QHostAddress &ip, const quint16 &port)
 {
     name_ = name;
-
     socket_.connectToHost(ip, port);
+
+    emit setCurrentConnectionStatus("Connecting...");
+}
+
+void Client::hostFound()
+{
+    qDebug() << "Host found";
+    emit setCurrentConnectionStatus("Host found...");
+}
+
+void Client::connected()
+{
+    qDebug() << "Connected";
 
     QJsonObject object;
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientConnected)));
@@ -41,34 +54,6 @@ void Client::connectToServer(const QString& name, const QHostAddress &ip, const 
     QJsonDocument document(object);
 
     socket_.write(document.toJson());
-}
-
-void Client::sendMessage(const QString &message)
-{
-    QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientMessage)));
-    object.insert("Message", QJsonValue(message));
-    QJsonDocument document(object);
-
-    socket_.write(document.toJson());
-}
-
-
-void Client::error(QAbstractSocket::SocketError socketError)
-{
-    qDebug() << "Connection error: " << socketError;
-
-    disconnected();
-}
-
-void Client::hostFound()
-{
-    qDebug() << "Host found";
-}
-
-void Client::connected()
-{
-    qDebug() << "Connected";
 
     connectionDialog_->hide();
 
@@ -89,21 +74,50 @@ void Client::connected()
     mainWindow_->show();
 }
 
+void Client::error(QAbstractSocket::SocketError socketError)
+{
+    qDebug() << "Connection error: " << socketError;
+
+    auto errorMessage = QVariant::fromValue(socketError).toString();
+
+    emit setCurrentConnectionStatus("Disconnected (" + errorMessage.toStdString() + ")");
+
+    disconnected();
+}
+
+
 void Client::disconnected()
 {
     socket_.disconnectFromHost();
 
-    mainWindow_->hide();
+    if(mainWindow_.get())
+    {
+        mainWindow_->hide();
+        mainWindow_->clearChat();
+        mainWindow_->clearRooms();
+        mainWindow_->clearClientNames();
 
-    if(mainWindow_->isActiveWindow())
-    {
-        connectionDialog_->showMaximized();
+        if(mainWindow_->isActiveWindow())
+        {
+            connectionDialog_->showMaximized();
+        }
+        else
+        {
+            connectionDialog_->showMinimized();
+            QApplication::alert(connectionDialog_.get());
+        }
     }
-    else
-    {
-        connectionDialog_->showMinimized();
-        QApplication::alert(connectionDialog_.get());
-    }
+}
+
+
+void Client::sendMessage(const QString &message)
+{
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientMessage)));
+    object.insert("Message", QJsonValue(message));
+    QJsonDocument document(object);
+
+    socket_.write(document.toJson());
 }
 
 void Client::joinRoom(const QString &roomName)
@@ -137,6 +151,7 @@ void Client::newRoom(const QString &roomName, std::vector<int> clientIndexes)
     socket_.write(doc.toJson());
 }
 
+// From server
 void Client::readyRead()
 {
     auto data = socket_.readAll();

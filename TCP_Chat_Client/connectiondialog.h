@@ -19,6 +19,9 @@ public:
 signals:
     void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
 
+public slots:
+    void setStatus(const std::string& string);
+
 private slots:
     void on_button_Connect_clicked();
 

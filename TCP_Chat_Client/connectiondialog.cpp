@@ -8,11 +8,20 @@ ConnectionDialog::ConnectionDialog(QWidget *parent) :
     ui(new Ui::ConnectionDialog)
 {
     ui->setupUi(this);
+
 }
 
 ConnectionDialog::~ConnectionDialog()
 {
     delete ui;
+}
+
+void ConnectionDialog::setStatus(const std::string& string)
+{
+
+    ui->label_CurrentStatus->setText(QString(string.c_str()));
+
+
 }
 
 void ConnectionDialog::on_button_Connect_clicked()

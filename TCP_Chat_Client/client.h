@@ -49,20 +49,18 @@ signals:
     void addClients(const std::vector<QString>& names);
     void addNewRoom(const QString& roomName);
     void joinedRoom(const QString& roomName);
-
-public slots:
-    void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
-    void sendMessage(const QString& message);
-    void disconnected();
-    void joinRoom(const QString& roomName);
-    void newRoom(const QString& roomName, std::vector<int> clientIndexes);
+    void setCurrentConnectionStatus(const std::string& string);
 
 private slots:
-    void error(QAbstractSocket::SocketError socketError);
+    void connectToHost(const QString& name, const QHostAddress& ip, const quint16& port);
     void hostFound();
     void connected();
+    void disconnected();
+    void error(QAbstractSocket::SocketError socketError);
+    void sendMessage(const QString& message);
+    void joinRoom(const QString& roomName);
+    void newRoom(const QString& roomName, std::vector<int> clientIndexes);
     void readyRead();
-
 };
 
 #endif // CLIENT_H
