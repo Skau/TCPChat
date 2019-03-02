@@ -36,7 +36,7 @@ void Client::connectToServer(const QString& name, const QHostAddress &ip, const 
     socket_.connectToHost(ip, port);
 
     QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::Connected)));
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientConnected)));
     object.insert("Name", QJsonValue(name_));
     QJsonDocument document(object);
 
@@ -46,7 +46,7 @@ void Client::connectToServer(const QString& name, const QHostAddress &ip, const 
 void Client::sendMessage(const QString &message)
 {
     QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::Message)));
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientMessage)));
     object.insert("Message", QJsonValue(message));
     QJsonDocument document(object);
 
@@ -80,7 +80,7 @@ void Client::connected()
         connect(mainWindow_.get(), &MainWindow::newRoom, this, &Client::newRoom);
         connect(mainWindow_.get(), &MainWindow::joinRoom, this, &Client::joinRoom);
         connect(this, &Client::addMessage, mainWindow_.get(), &MainWindow::addMessage);
-        connect(this, &Client::addNewClient, mainWindow_.get(), &MainWindow::addNewClient);
+        connect(this, &Client::addClients, mainWindow_.get(), &MainWindow::addClients);
         connect(this, &Client::addNewRoom, mainWindow_.get(), &MainWindow::addRoom);
         connect(this, &Client::joinedRoom, mainWindow_.get(), &MainWindow::joinedRoom);
     }
@@ -108,8 +108,10 @@ void Client::disconnected()
 
 void Client::joinRoom(const QString &roomName)
 {
+    qDebug() << "Join room " << roomName;
+
     QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::JoinedRoom)));
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientJoinRoom)));
     object.insert("RoomName", QJsonValue(roomName));
 
     QJsonDocument document;
@@ -119,7 +121,7 @@ void Client::joinRoom(const QString &roomName)
 void Client::newRoom(const QString &roomName, std::vector<int> clientIndexes)
 {
     QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::NewRoom)));
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientNewRoom)));
     object.insert("RoomName", QJsonValue(roomName));
 
     QJsonArray clients;
@@ -151,28 +153,31 @@ void Client::readyRead()
             if(!object.isEmpty())
             {
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-                if(contentType == Contents::JoinedRoom)
+                if(contentType == Contents::ServerJoinRoom)
                 {
                     auto roomName = object.find("RoomName").value().toString();
+                    qDebug() << "Server told me to join room " <<  roomName;
                     emit joinedRoom(roomName);
                 }
-                else if(contentType == Contents::Message)
+                else if(contentType == Contents::ServerMessage)
                 {
                     auto message = object.find("Message").value().toString();
                     emit addMessage(message);
                 }
-                else if(contentType == Contents::ClientNames)
+                else if(contentType == Contents::ServerClientNames)
                 {
                     mainWindow_->clearClientNames();
                     auto names = object.find("Names")->toArray();
+                    std::vector<QString> clientNames;
                     for(auto nameElement : names)
                     {
                         auto nameObj = nameElement.toObject();
                         auto n = nameObj.find("Name");
-                        emit addNewClient(n.value().toString());
+                        clientNames.push_back(n.value().toString());
                     }
+                    emit addClients(clientNames);
                 }
-                else if(contentType == Contents::NewRoom)
+                else if(contentType == Contents::ServerNewRoom)
                 {
                     auto roomName = object.find("RoomName").value().toString();
                     emit addNewRoom(roomName);

@@ -28,7 +28,7 @@ void Client::joinRoom(std::shared_ptr<ChatRoom> room)
     currentRoom_ = room;
 
     QJsonObject object;
-    object.insert("Contents", static_cast<int>(Contents::JoinedRoom));
+    object.insert("Contents", static_cast<int>(Contents::ServerJoinRoom));
     object.insert("RoomName", QJsonValue(room->name));
     QJsonDocument document(object);
     qDebug() << document;
@@ -40,7 +40,7 @@ void Client::addNewRoom(std::shared_ptr<ChatRoom> room)
     allRooms_.push_back(room);
 
     QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::NewRoom)));
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerNewRoom)));
     object.insert("RoomName", QJsonValue(room->name));
     QJsonDocument document(object);
     qDebug() << document;
@@ -55,7 +55,7 @@ void Client::removeRoom(std::shared_ptr<ChatRoom> room)
 void Client::sendMessage(const QString& message)
 {
     QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::Message)));
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerMessage)));
     object.insert("Message", QJsonValue(message));
     QJsonDocument document(object);
     qDebug() << document;
@@ -68,7 +68,7 @@ void Client::write()
     {
         auto doc = documents_.front();
         socket_->write(doc.toStdString().c_str());
-        documents_.erase(std::remove(documents_.begin(), documents_.end(), doc), documents_.end());
+        documents_.pop();
     }
 }
 

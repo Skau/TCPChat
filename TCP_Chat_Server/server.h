@@ -11,12 +11,17 @@ class Client;
 
 enum class Contents
 {
-    Message,      // Client <-> Server
-    Connected,    // Server <-> Client
-    NewRoom,      // Client <-> Server
-    JoinedRoom,   // Client -> Server
-    LeftRoom,     // Client -> Server
-    ClientNames   // Server -> Client
+    ClientMessage,
+    ServerMessage,
+    ClientConnected,
+    ServerConnected,
+    ClientNewRoom,
+    ServerNewRoom,
+    ClientJoinRoom,
+    ServerJoinRoom,
+    ClientLeftRoom,
+    ServerLeftRoom,
+    ServerClientNames
 };
 
 enum class RoomType
@@ -80,6 +85,9 @@ private:
     void removeRooms();
     int getRoomIndex(std::shared_ptr<ChatRoom> room);
     void updateClientNames(std::shared_ptr<ChatRoom> room);
+
+    std::shared_ptr<ChatRoom> tryToCreatePrivateRoom(std::shared_ptr<Client> client1, std::shared_ptr<Client> client2);
+    std::shared_ptr<ChatRoom> createPublicRoom(const QString& name);
 
 signals:
     void newConnectionAdded(const std::shared_ptr<Client>& client);

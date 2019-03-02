@@ -5,6 +5,7 @@
 #include <QTcpSocket>
 #include <memory>
 #include <QTimer>
+#include <queue>
 
 struct ChatRoom;
 
@@ -19,7 +20,7 @@ private:
     std::shared_ptr<ChatRoom> currentRoom_;
     std::vector<std::shared_ptr<ChatRoom>> allRooms_;
 
-    std::vector<QByteArray> documents_;
+    std::queue<QByteArray> documents_;
     QTimer timer_;
 
 public:
@@ -39,7 +40,7 @@ public:
     void sendMessage(const QString& message);
     QString read();
 
-    void addJsonDocument(const QByteArray& document) { documents_.push_back(document); }
+    void addJsonDocument(const QByteArray& document) { documents_.emplace(document); }
 
 signals:
     void newDataAvailable(std::shared_ptr<Client> client);

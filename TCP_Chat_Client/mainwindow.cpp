@@ -34,15 +34,23 @@ void MainWindow::clearChat()
     ui->textEdit_Input->clear();
 }
 
+void MainWindow::clearRooms()
+{
+    ui->list_Rooms->clear();
+}
+
 void MainWindow::addMessage(const QString &message)
 {
     ui->textEdit_Chat->appendPlainText(message);
     QApplication::alert(this);
 }
 
-void MainWindow::addNewClient(const QString &name)
+void MainWindow::addClients(const std::vector<QString> &names)
 {
-    ui->list_Clients->addItem(name);
+    for(auto& name : names)
+    {
+       ui->list_Clients->addItem(name);
+    }
 }
 
 void MainWindow::addRoom(const QString& roomName)
@@ -80,6 +88,7 @@ void MainWindow::on_button_newRoom_clicked()
 
 void MainWindow::on_button_LeaveRoom_clicked()
 {
+    qDebug() << "Left room";
     emit leftRoom();
 }
 
@@ -92,23 +101,22 @@ void MainWindow::showCustomContextMenu(const QPoint& pos)
         selectedName_ = ui->list_Clients->indexAt(pos).row();
 
         QMenu menu;
-        menu.addAction("Send message", this, &MainWindow::sendMessageTrigger);
+        menu.addAction("Send message", this, &MainWindow::sendPMTrigger);
 
         menu.exec(globalPos);
     }
 }
 
-void MainWindow::sendMessageTrigger()
+void MainWindow::sendPMTrigger()
 {
     qDebug() << selectedName_ << ", " << ui->list_Clients->item(selectedName_)->text();
     auto otherClientName = ui->list_Clients->item(selectedName_)->text();
-    emit newRoom("otherClientName", {selectedName_});
-
+    emit newRoom(otherClientName, {selectedName_});
 }
 
 void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
 {
-    qDebug() << "Hello";
+    qDebug() << "Double clicked room";
     auto roomName = ui->list_Rooms->item(index.row())->text();
     emit joinRoom(roomName);
 }

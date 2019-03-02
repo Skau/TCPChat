@@ -72,7 +72,7 @@ void Server::newConnection()
             if(!object.isEmpty())
             {
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-                if(contentType == Contents::Connected)
+                if(contentType == Contents::ClientConnected)
                 {
                     // Get name chosen for new client
                     auto name = object.find("Name").value().toString();
@@ -134,15 +134,20 @@ void Server::readyRead(std::shared_ptr<Client> client)
             if(!object.isEmpty())
             {
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-                if(contentType == Contents::Message)
+
+                // TODO: fix so messages are still sent if the user is not in the current room
+                if(contentType == Contents::ClientMessage)
                 {
-                    for(auto& connectedClient : clients_)
+                    for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
                     {
-                        connectedClient->sendMessage(QString(client->getName() + ": " + object.find("Message").value().toString()));
+                        if(connectedClient->getCurrentRoom() == client->getCurrentRoom())
+                        {
+                            connectedClient->sendMessage(QString(client->getName() + ": " + object.find("Message").value().toString()));
+                        }
                     }
                 }
                 // TODO: Fix this
-                else if(contentType == Contents::NewRoom)
+                else if(contentType == Contents::ClientNewRoom)
                 {
                     std::shared_ptr<ChatRoom> room;
                     auto roomName = object.find("RoomName").value().toString();
@@ -150,94 +155,49 @@ void Server::readyRead(std::shared_ptr<Client> client)
                     // If only one name, it means pm
                     if(clientIndexes.size() == 1)
                     {
-                        // Get other client
+                        // Get other client TODO: refactor
                         auto clientIndexObject = clientIndexes[0].toObject();
                         auto index = clientIndexObject.find("Index").value().toInt();
                         auto otherClient = clients_[static_cast<unsigned>(index)];
 
-                        // Return if trying to make pm with itself
-                        if(client->getID() == otherClient->getID()) { return; }
-
-                        // Return if room already exists
-                        for(auto& room : client->getAllRooms())
+                        auto r = tryToCreatePrivateRoom(client, otherClient);
+                        if(!r.get())
                         {
-                            if(room->name == roomName) { return; }
+                            qDebug() << "Failed to create private room";
                         }
-
-                        auto roomName = "PM (" + client->getName() + " and " + otherClient->getName() + ")";
-                        room = createRoom(
-                                    roomName,
-                                    RoomType::Private,
-                        {client, otherClient},
-                        {client, otherClient}
-                                    );
                     }
 
                     // If no names
                     else if(!clientIndexes.size())
                     {
-                        auto roomName = object.find("RoomName").value().toString();
-
-                        // Return if room name already exists
-                        for(auto& room : client->getAllRooms())
+                        // Return if room already exists
+                        for(auto& room : rooms_)
                         {
                             if(room->name == roomName) { return; }
                         }
 
-                        room = createRoom(object.find("RoomName").value().toString(), RoomType::Public, {client}, {client});
-                    }
-
-                    // Send room info back to the clients
-                    if(room.get())
-                    {
-                        for(unsigned int i = 0; i < room->allowedClients.size(); ++i)
-                        {
-                            // Private (PM)
-                            if(room->type == RoomType::Private)
-                            {
-                                // Find name of other client
-                                auto clientIndexObject = clientIndexes[0].toObject();
-                                auto index = clientIndexObject.find("Index").value().toInt();
-                                auto otherClient = clients_[static_cast<unsigned>(index)];
-
-                                if(i == 0)
-                                {
-                                    room->name = room->allowedClients[1]->getName();
-                                }
-                                else
-                                {
-                                    room->name = room->allowedClients[0]->getName();
-                                }
-                            }
-                            // Public
-                            else
-                            {
-                                room->allowedClients[i]->addNewRoom(room);
-                            }
-                        }
+                        createPublicRoom(roomName);
                     }
                 }
-                else if(contentType == Contents::JoinedRoom)
+                else if(contentType == Contents::ClientJoinRoom)
                 {
                     auto roomName = object.find("RoomName").value().toString();
+
+                    qDebug() << "Client wants to join the room " << roomName;
 
                     // Return if already in said room
                     if(roomName == client->getCurrentRoom()->name) { return; }
 
-                    std::shared_ptr<ChatRoom> roomToJoin;
+                    // Find the room
                     for(auto& room : client->getAllRooms())
                     {
                         if(room->name == roomName)
                         {
-                            roomToJoin = room;
+                            // Join
+                            client->joinRoom(room);
+                            updateClientNames(room);
                             break;
                         }
-                    }
-
-                    if(roomToJoin.get())
-                    {
-                        client->joinRoom(roomToJoin);
-                        updateClientNames(roomToJoin);
                     }
                 }
             }
@@ -284,10 +244,9 @@ void Server::disconnected(std::shared_ptr<Client> client)
         room->remove(client);
         clients_.erase(std::remove(clients_.begin(), clients_.end(), client), clients_.end());
         client.reset();
-        auto index = getRoomIndex(room);
-        if(index >= 0)
+        if(room->type != RoomType::Private)
         {
-            emit changeRoomName(QString(room->name + " [" + QString::number(room->connectedClients.size()) + "]"), index);
+            emit changeRoomName(QString(room->name + " [" + QString::number(room->connectedClients.size()) + "]"), getRoomIndex(room));
         }
 
         updateClientNames(room);
@@ -310,6 +269,8 @@ void Server::removeRooms()
         room.reset();
     }
     rooms_.clear();
+
+
 }
 
 int Server::getRoomIndex(std::shared_ptr<ChatRoom> room)
@@ -330,7 +291,7 @@ void Server::updateClientNames(std::shared_ptr<ChatRoom> room)
     if(room->connectedClients.size())
     {
         QJsonObject object;
-        object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientNames)));
+        object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerClientNames)));
 
         QJsonArray names;
         for(auto& connectedClient : room->connectedClients)
@@ -348,4 +309,59 @@ void Server::updateClientNames(std::shared_ptr<ChatRoom> room)
             connectedClient->addJsonDocument(document.toJson());
         }
     }
+}
+
+std::shared_ptr<ChatRoom> Server::tryToCreatePrivateRoom(std::shared_ptr<Client> client1, std::shared_ptr<Client> client2)
+{
+    std::shared_ptr<ChatRoom> roomToReturn;
+
+    // Check that clients are different
+    if(client1->getID() != client2->getID())
+    {
+        qDebug() << "Client1: " << client1->getName() << ", Client2: " << client2->getName();
+
+        // Return if PM room already exists
+        for(auto& room : client1->getAllRooms())
+        {
+            // Check only PMs
+            if(room->type == RoomType::Private)
+            {
+                for(auto& client : room->connectedClients)
+                {
+                    if(client->getID() == client2->getID()) { return roomToReturn; }
+                }
+            }
+        }
+
+        roomToReturn = createRoom(
+                    "PM (" + client1->getName() + " and " + client2->getName() + ")",
+                    RoomType::Private,
+        {client1, client2},
+        {client1, client2}
+                    );
+    }
+
+    roomToReturn->name = client2->getName();
+    client1->addNewRoom(roomToReturn);
+    client1->joinRoom(roomToReturn);
+    updateClientNames(roomToReturn);
+
+    // TODO: Not create this right away on other client,
+    // otherClient should create this automatically if not existing (aka on first message)
+    roomToReturn->name = client1->getName();
+    client2->addNewRoom(roomToReturn);
+
+    return roomToReturn;
+}
+
+std::shared_ptr<ChatRoom> Server::createPublicRoom(const QString &name)
+{
+    auto room = createRoom(name, RoomType::Public);
+
+    for(auto& client : clients_)
+    {
+        client->addNewRoom(room);
+    }
+
+    return room;
 }

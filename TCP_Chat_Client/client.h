@@ -11,12 +11,17 @@ class ConnectionDialog;
 
 enum class Contents
 {
-    Message,      // Client <-> Server
-    Connected,    // Server <-> Client
-    NewRoom,      // Client <-> Server
-    JoinedRoom,   // Client -> Server
-    LeftRoom,     // Client -> Server
-    ClientNames   // Server -> Client
+    ClientMessage,
+    ServerMessage,
+    ClientConnected,
+    ServerConnected,
+    ClientNewRoom,
+    ServerNewRoom,
+    ClientJoinRoom,
+    ServerJoinRoom,
+    ClientLeftRoom,
+    ServerLeftRoom,
+    ServerClientNames
 };
 
 enum class RoomType
@@ -41,7 +46,7 @@ public:
 
 signals:
     void addMessage(const QString& message);
-    void addNewClient(const QString& name);
+    void addClients(const std::vector<QString>& names);
     void addNewRoom(const QString& roomName);
     void joinedRoom(const QString& roomName);
 
