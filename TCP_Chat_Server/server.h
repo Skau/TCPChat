@@ -79,7 +79,7 @@ private:
     void removeClients();
     void removeRooms();
     int getRoomIndex(std::shared_ptr<ChatRoom> room);
-    void updateClientNames();
+    void updateClientNames(std::shared_ptr<ChatRoom> room);
 
 signals:
     void newConnectionAdded(const std::shared_ptr<Client>& client);

@@ -21,7 +21,7 @@ MainWindow::~MainWindow()
 void MainWindow::newConnectionAdded(const std::shared_ptr<Client>& client)
 {
     ui->statusBar->showMessage("New client connected", 2000);
-    if(currentRoomID_ == client->getRoom()->ID)
+    if(currentRoomID_ == client->getCurrentRoom()->ID)
     {
         ui->list_Clients->addItem(client->getName() + " (" + QString::number(client->getID()) + ")");
 
@@ -64,7 +64,7 @@ void MainWindow::addClientNames(std::shared_ptr<ChatRoom> room)
 
 void MainWindow::removeClientName(std::shared_ptr<Client> client)
 {
-    if(currentRoomID_ == client->getRoom()->ID)
+    if(currentRoomID_ == client->getCurrentRoom()->ID)
     {
         for(int i = 0; i < ui->list_Clients->count(); ++i)
         {

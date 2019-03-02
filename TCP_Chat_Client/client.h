@@ -35,7 +35,6 @@ private:
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
 
-
 public:
     Client(std::shared_ptr<ConnectionDialog> connectionDialog);
     virtual ~Client();
@@ -43,11 +42,14 @@ public:
 signals:
     void addMessage(const QString& message);
     void addNewClient(const QString& name);
+    void addNewRoom(const QString& roomName);
+    void joinedRoom(const QString& roomName);
 
 public slots:
     void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
     void sendMessage(const QString& message);
     void disconnected();
+    void joinRoom(const QString& roomName);
     void newRoom(const QString& roomName, std::vector<int> clientIndexes);
 
 private slots:

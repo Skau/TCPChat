@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include "client.h"
+#include <string>
 
 Server::Server() : idCounterClient_(0)
 {    
@@ -85,11 +86,13 @@ void Server::newConnection()
                     // Add client
                     clients_.push_back(client);
                     rooms_[0]->connectedClients.push_back(client);
-                    client->setRoom(rooms_[0]);
+                    client->addNewRoom(rooms_[0]);
+                    client->joinRoom(rooms_[0]);
+
                     emit newConnectionAdded(client);
                     emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
 
-                    updateClientNames();
+                    updateClientNames(rooms_[0]);
                 }
             }
             else
@@ -133,23 +136,17 @@ void Server::readyRead(std::shared_ptr<Client> client)
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
                 if(contentType == Contents::Message)
                 {
-                    QJsonObject newObject;
-                    newObject.insert("Contents", QJsonValue(static_cast<int>(contentType)));
-                    newObject.insert("Message", QJsonValue(QString(client->getName() + ": " + object.find("Message").value().toString())));
-                    QJsonDocument document(newObject);
                     for(auto& connectedClient : clients_)
                     {
-                        connectedClient->write(document.toJson());
+                        connectedClient->sendMessage(QString(client->getName() + ": " + object.find("Message").value().toString()));
                     }
                 }
+                // TODO: Fix this
                 else if(contentType == Contents::NewRoom)
                 {
-                    auto roomName = object.find("RoomName").value().toString();
-
-                    auto clientIndexes = object.find("ClientIndexes").value().toArray();
-
                     std::shared_ptr<ChatRoom> room;
-
+                    auto roomName = object.find("RoomName").value().toString();
+                    auto clientIndexes = object.find("ClientIndexes").value().toArray();
                     // If only one name, it means pm
                     if(clientIndexes.size() == 1)
                     {
@@ -161,29 +158,86 @@ void Server::readyRead(std::shared_ptr<Client> client)
                         // Return if trying to make pm with itself
                         if(client->getID() == otherClient->getID()) { return; }
 
-                        // Create the room
+                        // Return if room already exists
+                        for(auto& room : client->getAllRooms())
+                        {
+                            if(room->name == roomName) { return; }
+                        }
+
+                        auto roomName = "PM (" + client->getName() + " and " + otherClient->getName() + ")";
                         room = createRoom(
-                                    "PM (" + client->getName() + " and " + otherClient->getName() + ")",
+                                    roomName,
                                     RoomType::Private,
-                                    {client, otherClient},
-                                    {client, otherClient}
-                                  );
+                        {client, otherClient},
+                        {client, otherClient}
+                                    );
                     }
 
                     // If no names
                     else if(!clientIndexes.size())
                     {
+                        auto roomName = object.find("RoomName").value().toString();
+
+                        // Return if room name already exists
+                        for(auto& room : client->getAllRooms())
+                        {
+                            if(room->name == roomName) { return; }
+                        }
+
                         room = createRoom(object.find("RoomName").value().toString(), RoomType::Public, {client}, {client});
                     }
 
                     // Send room info back to the clients
                     if(room.get())
                     {
-                        for(auto& c : room->allowedClients)
+                        for(unsigned int i = 0; i < room->allowedClients.size(); ++i)
                         {
-                            // TODO: Finish this
+                            // Private (PM)
+                            if(room->type == RoomType::Private)
+                            {
+                                // Find name of other client
+                                auto clientIndexObject = clientIndexes[0].toObject();
+                                auto index = clientIndexObject.find("Index").value().toInt();
+                                auto otherClient = clients_[static_cast<unsigned>(index)];
 
+                                if(i == 0)
+                                {
+                                    room->name = room->allowedClients[1]->getName();
+                                }
+                                else
+                                {
+                                    room->name = room->allowedClients[0]->getName();
+                                }
+                            }
+                            // Public
+                            else
+                            {
+                                room->allowedClients[i]->addNewRoom(room);
+                            }
                         }
+                    }
+                }
+                else if(contentType == Contents::JoinedRoom)
+                {
+                    auto roomName = object.find("RoomName").value().toString();
+
+                    // Return if already in said room
+                    if(roomName == client->getCurrentRoom()->name) { return; }
+
+                    std::shared_ptr<ChatRoom> roomToJoin;
+                    for(auto& room : client->getAllRooms())
+                    {
+                        if(room->name == roomName)
+                        {
+                            roomToJoin = room;
+                            break;
+                        }
+                    }
+
+                    if(roomToJoin.get())
+                    {
+                        client->joinRoom(roomToJoin);
+                        updateClientNames(roomToJoin);
                     }
                 }
             }
@@ -226,7 +280,7 @@ void Server::disconnected(std::shared_ptr<Client> client)
         qDebug() << client->getName() << " disconnected";
         emit clientDisconnected(client);
 
-        auto room = client->getRoom();
+        auto room = client->getCurrentRoom();
         room->remove(client);
         clients_.erase(std::remove(clients_.begin(), clients_.end(), client), clients_.end());
         client.reset();
@@ -236,7 +290,7 @@ void Server::disconnected(std::shared_ptr<Client> client)
             emit changeRoomName(QString(room->name + " [" + QString::number(room->connectedClients.size()) + "]"), index);
         }
 
-        updateClientNames();
+        updateClientNames(room);
     }
 }
 
@@ -271,15 +325,15 @@ int Server::getRoomIndex(std::shared_ptr<ChatRoom> room)
     return -1;
 }
 
-void Server::updateClientNames()
+void Server::updateClientNames(std::shared_ptr<ChatRoom> room)
 {
-    if(clients_.size())
+    if(room->connectedClients.size())
     {
         QJsonObject object;
         object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientNames)));
 
         QJsonArray names;
-        for(auto& connectedClient : clients_)
+        for(auto& connectedClient : room->connectedClients)
         {
             QJsonObject nameObj;
             nameObj.insert("Name", QJsonValue(connectedClient->getName()));
@@ -288,9 +342,10 @@ void Server::updateClientNames()
         object.insert("Names", names);
 
         QJsonDocument document(object);
-        for(auto& connectedClient : clients_)
+        qDebug() << document;
+        for(auto& connectedClient : room->connectedClients)
         {
-            connectedClient->write(document.toJson());
+            connectedClient->addJsonDocument(document.toJson());
         }
     }
 }

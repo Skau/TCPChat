@@ -38,12 +38,22 @@ void MainWindow::addMessage(const QString &message)
 {
     ui->textEdit_Chat->appendPlainText(message);
     QApplication::alert(this);
-
 }
 
 void MainWindow::addNewClient(const QString &name)
 {
     ui->list_Clients->addItem(name);
+}
+
+void MainWindow::addRoom(const QString& roomName)
+{
+    ui->list_Rooms->addItem(roomName);
+}
+
+void MainWindow::joinedRoom(const QString &roomName)
+{
+    ui->label_CurrentRoom->setText(roomName);
+    ui->list_Clients->clear();
 }
 
 void MainWindow::onSendMessage()
@@ -94,4 +104,11 @@ void MainWindow::sendMessageTrigger()
     auto otherClientName = ui->list_Clients->item(selectedName_)->text();
     emit newRoom("otherClientName", {selectedName_});
 
+}
+
+void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
+{
+    qDebug() << "Hello";
+    auto roomName = ui->list_Rooms->item(index.row())->text();
+    emit joinRoom(roomName);
 }

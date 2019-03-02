@@ -78,8 +78,11 @@ void Client::connected()
         connect(mainWindow_.get(), &MainWindow::disconnected, this, &Client::disconnected);
         connect(mainWindow_.get(), &MainWindow::sendMessage, this, &Client::sendMessage);
         connect(mainWindow_.get(), &MainWindow::newRoom, this, &Client::newRoom);
+        connect(mainWindow_.get(), &MainWindow::joinRoom, this, &Client::joinRoom);
         connect(this, &Client::addMessage, mainWindow_.get(), &MainWindow::addMessage);
         connect(this, &Client::addNewClient, mainWindow_.get(), &MainWindow::addNewClient);
+        connect(this, &Client::addNewRoom, mainWindow_.get(), &MainWindow::addRoom);
+        connect(this, &Client::joinedRoom, mainWindow_.get(), &MainWindow::joinedRoom);
     }
 
     mainWindow_->setWindowTitle(name_);
@@ -101,6 +104,16 @@ void Client::disconnected()
         connectionDialog_->showMinimized();
         QApplication::alert(connectionDialog_.get());
     }
+}
+
+void Client::joinRoom(const QString &roomName)
+{
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::JoinedRoom)));
+    object.insert("RoomName", QJsonValue(roomName));
+
+    QJsonDocument document;
+    socket_.write(document.toJson());
 }
 
 void Client::newRoom(const QString &roomName, std::vector<int> clientIndexes)
@@ -138,7 +151,12 @@ void Client::readyRead()
             if(!object.isEmpty())
             {
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-                if(contentType == Contents::Message)
+                if(contentType == Contents::JoinedRoom)
+                {
+                    auto roomName = object.find("RoomName").value().toString();
+                    emit joinedRoom(roomName);
+                }
+                else if(contentType == Contents::Message)
                 {
                     auto message = object.find("Message").value().toString();
                     emit addMessage(message);
@@ -153,6 +171,11 @@ void Client::readyRead()
                         auto n = nameObj.find("Name");
                         emit addNewClient(n.value().toString());
                     }
+                }
+                else if(contentType == Contents::NewRoom)
+                {
+                    auto roomName = object.find("RoomName").value().toString();
+                    emit addNewRoom(roomName);
                 }
             }
             else

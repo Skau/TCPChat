@@ -26,11 +26,14 @@ signals:
     void sendMessage(const QString& message);
     void disconnected();
     void newRoom(const QString& roomName, std::vector<int> clientIndexes);
+    void joinRoom(const QString& roomName);
     void leftRoom();
 
 public slots:
     void addMessage(const QString& message);
     void addNewClient(const QString& name);
+    void addRoom(const QString& roomName);
+    void joinedRoom(const QString& roomName);
 
 private slots:
     void onSendMessage();
@@ -39,6 +42,9 @@ private slots:
     void on_button_LeaveRoom_clicked();
     void showCustomContextMenu(const QPoint &pos);
     void sendMessageTrigger();
+
+    void on_list_Rooms_doubleClicked(const QModelIndex &index);
+
 private:
     int selectedName_;
 };
