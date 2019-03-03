@@ -34,6 +34,11 @@ enum class RoomType
     Private
 };
 
+enum class DataType
+{
+    Image
+};
+
 class Client : public QObject
 {
     Q_OBJECT
@@ -43,11 +48,11 @@ private:
     QTcpSocket socket_;
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
-    int number_;
 
     bool isRecievingData_;
     QByteArray data_;
     QString nameOfSender_;
+    int dataSize_;
 
 public:
     Client(std::shared_ptr<ConnectionDialog> connectionDialog);
@@ -55,7 +60,7 @@ public:
 
 signals:
     void addMessage(const QString& message);
-    void addImage(const QString& name, const QImage& image);
+    void addImage(const QString& name, std::shared_ptr<QImage> image);
     void addClients(const std::vector<QString>& names);
     void addNewRoom(const QString& roomName);
     void joinedRoom(const QString& roomName);

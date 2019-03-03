@@ -1,4 +1,0 @@
-{
-    "Contents": "enum value",
-    "Message": "Hello World!"
-}

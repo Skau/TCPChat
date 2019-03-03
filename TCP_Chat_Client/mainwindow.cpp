@@ -48,11 +48,10 @@ void MainWindow::addMessage(const QString &message)
     QApplication::alert(this);
 }
 
-void MainWindow::addImage(const QString &name, const QImage &image)
+void MainWindow::addImage(const QString &name, std::shared_ptr<QImage> image)
 {
     ui->textEdit_Chat->append(name + ":\n");
-
-    ui->textEdit_Chat->textCursor().insertImage(image);
+    ui->textEdit_Chat->textCursor().insertImage(*image.get());
 }
 
 void MainWindow::addClients(const std::vector<QString> &names)
@@ -140,11 +139,12 @@ void MainWindow::on_button_sendImage_clicked()
                                                         "GIF (*.gif)\n"
                                                         "Bitmap Files (*.bmp)\n"
                                                         ));
+    if(!path.size()) { return; }
 
     auto file = QFile(path);
     file.open(QIODevice::ReadOnly);
     QByteArray imageData = file.readAll();
     emit sendImage(imageData);
-
-    addImage(name_, QImage(path));
+//    std::shared_ptr<QImage> image = std::make_shared<QImage>(path);
+//    addImage(name_, image);
 }

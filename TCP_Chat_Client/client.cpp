@@ -8,10 +8,12 @@
 #include <QJsonArray>
 #include <QByteArray>
 #include <QTime>
+#include <QBuffer>
+#include <QImageWriter>
 #include "mainwindow.h"
 #include "connectiondialog.h"
 
-Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) : connectionDialog_(connectionDialog)
+Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) : connectionDialog_(connectionDialog), isRecievingData_(false)
 {
     connect(connectionDialog_.get(), &ConnectionDialog::connectToServer, this, &Client::connectToHost);
     connect(this, &Client::setCurrentConnectionStatus, connectionDialog_.get(), &ConnectionDialog::setStatus);
@@ -131,33 +133,13 @@ void Client::sendImage(QByteArray &data)
     QJsonObject object;
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientMessageImage)));
     auto dataToSend = data.size();
+    qDebug() << "Data to send: " << dataToSend;
     object.insert("Size", QJsonValue(dataToSend));
     QJsonDocument document(object);
     socket_.write(document.toJson());
+    socket_.waitForBytesWritten();
 
-    number_ = 0;
-    long long dataSent = 0;
-
-    // Send the data
-    while(dataToSend > 0)
-    {
-        auto sent = socket_.write(data);
-        socket_.waitForBytesWritten();
-        emit addMessage(QString::number(sent));
-        dataToSend -= sent;
-        dataSent += sent;
-        data.remove(0, static_cast<int>(sent));
-        ++number_;
-    }
-
-    emit addMessage(QString::number(number_));
-    emit addMessage(QString::number(dataSent));
-
-    // Tell server that it's done
-    object = QJsonObject();
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientDone)));
-    document = QJsonDocument(object);
-    socket_.write(document.toJson());
+    socket_.write(data);
 }
 
 void Client::joinRoom(const QString &roomName)
@@ -226,17 +208,21 @@ void Client::readyRead()
                 }
                 case Contents::ServerMessageImage:
                 {
-                    qDebug() << "Receving image";
+                    isRecievingData_ = true;
+
+                    nameOfSender_ = object.find("Name").value().toString();
+                    qDebug() << "Receving image from " << nameOfSender_;
+
+                    auto size = object.find("Size").value().toInt();
+                    dataSize_ = size;
+                    qDebug() << "Size: " << size;
 
                     if(data_.size())
                     {
                         data_.clear();
                     }
-                    auto size = object.find("Size").value().toInt();
-                    qDebug() << "Size: " << size;
                     data_.reserve(size);
-                    isRecievingData_ = true;
-                    nameOfSender_ = object.find("Name").value().toString();
+
                     break;
                 }
                 case Contents::ServerClientNames:
@@ -261,11 +247,7 @@ void Client::readyRead()
                 }
                 case Contents::ServerDone:
                 {
-                    qDebug() << "data_ size: " << data_.size();
-                    isRecievingData_ = false;
-                    QImage image;
-                    image.loadFromData(QByteArray::fromBase64(data_));
-                    emit addImage(nameOfSender_, image);
+
                     break;
                 }
                 default:
@@ -289,8 +271,18 @@ void Client::readyRead()
         if(isRecievingData_)
         {
             auto d = data.toUtf8();
-            qDebug() << "Data recieved: " << d.size() << " bytes";
             data_.append(data);
+            qDebug() << "Recieved " << data_.size() << "/" << dataSize_ << " bytes";
+            if(data_.size() >= dataSize_)
+            {
+                qDebug() << "Server done";
+                qDebug() << "Total data recieved: " << data_.size();
+                isRecievingData_ = false;
+
+                std::shared_ptr<QImage> image = std::make_shared<QImage>();
+                image->loadFromData(QByteArray::fromBase64(data_));
+                emit addImage(nameOfSender_, image);
+            }
         }
         else
         {

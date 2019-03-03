@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <memory>
 
 namespace Ui {
 class MainWindow;
@@ -33,7 +34,7 @@ signals:
 
 public slots:
     void addMessage(const QString& message);
-    void addImage(const QString& name, const QImage& image);
+    void addImage(const QString& name, std::shared_ptr<QImage> image);
     void addClients(const std::vector<QString>& names);
     void addRoom(const QString& roomName);
     void joinedRoom(const QString& roomName);

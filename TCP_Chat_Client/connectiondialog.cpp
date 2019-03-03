@@ -20,8 +20,6 @@ void ConnectionDialog::setStatus(const std::string& string)
 {
 
     ui->label_CurrentStatus->setText(QString(string.c_str()));
-
-
 }
 
 void ConnectionDialog::on_button_Connect_clicked()
@@ -30,15 +28,17 @@ void ConnectionDialog::on_button_Connect_clicked()
 
     bool isNumber;
     auto port = ui->line_Port->text().toUShort(&isNumber);
+    QHostAddress address(ui->line_IP->text());
+    auto name = ui->line_Name->text();
 
-    if(isNumber)
+    if(port && isNumber && !address.isNull() && name.length())
     {
-        emit connectToServer(ui->line_Name->text(), QHostAddress(ui->line_IP->text()), port);
+        emit connectToServer(name, address, port);
     }
     else
     {
-        qDebug() << "Port is not all numeric";
-        exit(0);
+        qDebug() << "Invalid input";
+        setStatus("Invalid input");
     }
 }
 

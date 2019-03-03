@@ -34,6 +34,11 @@ enum class RoomType
     Private
 };
 
+enum class DataType
+{
+    Image
+};
+
 struct ChatRoom
 {
     int ID;
@@ -82,7 +87,7 @@ private:
 
     bool isReceivingData_;
     QByteArray data_;
-    int number_;
+    int dataSize_;
 
 public:
     Server();

@@ -1,5 +1,0 @@
-{
-  "Contents": "enum value",
-  "ClientID": "1",
-  "RoomID": "1"
-}
