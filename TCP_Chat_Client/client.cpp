@@ -6,7 +6,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-
+#include <QByteArray>
+#include <QTime>
 #include "mainwindow.h"
 #include "connectiondialog.h"
 
@@ -62,9 +63,11 @@ void Client::connected()
         mainWindow_ = std::make_unique<MainWindow>(name_);
         connect(mainWindow_.get(), &MainWindow::disconnected, this, &Client::disconnected);
         connect(mainWindow_.get(), &MainWindow::sendMessage, this, &Client::sendMessage);
+        connect(mainWindow_.get(), &MainWindow::sendImage, this, &Client::sendImage);
         connect(mainWindow_.get(), &MainWindow::newRoom, this, &Client::newRoom);
         connect(mainWindow_.get(), &MainWindow::joinRoom, this, &Client::joinRoom);
         connect(this, &Client::addMessage, mainWindow_.get(), &MainWindow::addMessage);
+        connect(this, &Client::addImage, mainWindow_.get(), &MainWindow::addImage);
         connect(this, &Client::addClients, mainWindow_.get(), &MainWindow::addClients);
         connect(this, &Client::addNewRoom, mainWindow_.get(), &MainWindow::addRoom);
         connect(this, &Client::joinedRoom, mainWindow_.get(), &MainWindow::joinedRoom);
@@ -120,6 +123,43 @@ void Client::sendMessage(const QString &message)
     socket_.write(document.toJson());
 }
 
+void Client::sendImage(QByteArray &data)
+{
+    data = data.toBase64();
+
+    // Tell server that lots of data is incoming
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientMessageImage)));
+    auto dataToSend = data.size();
+    object.insert("Size", QJsonValue(dataToSend));
+    QJsonDocument document(object);
+    socket_.write(document.toJson());
+
+    number_ = 0;
+    long long dataSent = 0;
+
+    // Send the data
+    while(dataToSend > 0)
+    {
+        auto sent = socket_.write(data);
+        socket_.waitForBytesWritten();
+        emit addMessage(QString::number(sent));
+        dataToSend -= sent;
+        dataSent += sent;
+        data.remove(0, static_cast<int>(sent));
+        ++number_;
+    }
+
+    emit addMessage(QString::number(number_));
+    emit addMessage(QString::number(dataSent));
+
+    // Tell server that it's done
+    object = QJsonObject();
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientDone)));
+    document = QJsonDocument(object);
+    socket_.write(document.toJson());
+}
+
 void Client::joinRoom(const QString &roomName)
 {
     qDebug() << "Join room " << roomName;
@@ -154,32 +194,52 @@ void Client::newRoom(const QString &roomName, std::vector<int> clientIndexes)
 // From server
 void Client::readyRead()
 {
-    auto data = socket_.readAll();
     QJsonParseError error;
-    QJsonDocument document = QJsonDocument::fromJson(QString(data).toUtf8(), &error);
-
-    qDebug() << "JSON doc: " << document;
+    QString data = socket_.readAll();
+    QJsonDocument document = QJsonDocument::fromJson(data.toUtf8(), &error);
 
     if(!document.isNull())
     {
+        qDebug() << "JSON doc: " << document;
+
         if(document.isObject())
         {
             auto object = document.object();
             if(!object.isEmpty())
             {
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-                if(contentType == Contents::ServerJoinRoom)
+
+                switch (contentType)
+                {
+                case Contents::ServerJoinRoom:
                 {
                     auto roomName = object.find("RoomName").value().toString();
                     qDebug() << "Server told me to join room " <<  roomName;
                     emit joinedRoom(roomName);
+                    break;
                 }
-                else if(contentType == Contents::ServerMessage)
+                case Contents::ServerMessage:
                 {
                     auto message = object.find("Message").value().toString();
                     emit addMessage(message);
+                    break;
                 }
-                else if(contentType == Contents::ServerClientNames)
+                case Contents::ServerMessageImage:
+                {
+                    qDebug() << "Receving image";
+
+                    if(data_.size())
+                    {
+                        data_.clear();
+                    }
+                    auto size = object.find("Size").value().toInt();
+                    qDebug() << "Size: " << size;
+                    data_.reserve(size);
+                    isRecievingData_ = true;
+                    nameOfSender_ = object.find("Name").value().toString();
+                    break;
+                }
+                case Contents::ServerClientNames:
                 {
                     mainWindow_->clearClientNames();
                     auto names = object.find("Names")->toArray();
@@ -191,11 +251,27 @@ void Client::readyRead()
                         clientNames.push_back(n.value().toString());
                     }
                     emit addClients(clientNames);
+                    break;
                 }
-                else if(contentType == Contents::ServerNewRoom)
+                case Contents::ServerNewRoom:
                 {
                     auto roomName = object.find("RoomName").value().toString();
                     emit addNewRoom(roomName);
+                    break;
+                }
+                case Contents::ServerDone:
+                {
+                    qDebug() << "data_ size: " << data_.size();
+                    isRecievingData_ = false;
+                    QImage image;
+                    image.loadFromData(QByteArray::fromBase64(data_));
+                    emit addImage(nameOfSender_, image);
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
                 }
             }
             else
@@ -210,7 +286,16 @@ void Client::readyRead()
     }
     else
     {
-        qDebug() << "[Ready Read] JSON doc is null: " + error.errorString();
+        if(isRecievingData_)
+        {
+            auto d = data.toUtf8();
+            qDebug() << "Data recieved: " << d.size() << " bytes";
+            data_.append(data);
+        }
+        else
+        {
+            qDebug() << "[Ready Read] JSON doc is null: " + error.errorString();
+        }
     }
 }
 

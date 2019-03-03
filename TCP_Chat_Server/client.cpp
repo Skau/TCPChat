@@ -62,9 +62,40 @@ void Client::sendMessage(const QString& message)
     addJsonDocument(document.toJson());
 }
 
+void Client::sendImage(QByteArray& data)
+{
+    isSendingData_ = true;
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerMessageImage)));
+    object.insert("Name", QJsonValue(name_));
+    auto dataToSend = data.size();
+    object.insert("Size", QJsonValue(dataToSend));
+    QJsonDocument document(object);
+    qDebug() << document;
+    socket_->write(document.toJson());
+
+    auto dataSent = 0;
+    while(dataToSend > 0)
+    {
+        auto sent = socket_->write(data);
+        socket_->waitForBytesWritten();
+        dataSent += sent;
+        dataToSend -= sent;
+        data.remove(0, static_cast<int>(sent));
+        qDebug() << "Data sent: " << dataSent;
+        qDebug() << "Data to send: " << dataToSend;
+    }
+
+    object = QJsonObject();
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerDone)));
+    document = QJsonDocument(object);
+    socket_->write(document.toJson());
+    isSendingData_= false;
+}
+
 void Client::write()
 {
-    if(socket_ && documents_.size())
+    if(socket_ && documents_.size() && !isSendingData_)
     {
         auto doc = documents_.front();
         socket_->write(doc.toStdString().c_str());
@@ -88,7 +119,7 @@ void Client::readyRead()
 {
     if(socket_)
     {
-        newDataAvailable(shared_from_this());
+        emit newDataAvailable(shared_from_this());
     }
 }
 

@@ -25,6 +25,7 @@ public:
 
 signals:
     void sendMessage(const QString& message);
+    void sendImage(QByteArray& ba);
     void disconnected();
     void newRoom(const QString& roomName, std::vector<int> clientIndexes);
     void joinRoom(const QString& roomName);
@@ -32,6 +33,7 @@ signals:
 
 public slots:
     void addMessage(const QString& message);
+    void addImage(const QString& name, const QImage& image);
     void addClients(const std::vector<QString>& names);
     void addRoom(const QString& roomName);
     void joinedRoom(const QString& roomName);
@@ -45,6 +47,8 @@ private slots:
     void sendPMTrigger();
 
     void on_list_Rooms_doubleClicked(const QModelIndex &index);
+
+    void on_button_sendImage_clicked();
 
 private:
     int selectedName_;

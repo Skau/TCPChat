@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>667</width>
-    <height>436</height>
+    <width>642</width>
+    <height>462</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -96,13 +96,7 @@ border: none;</string>
          </widget>
         </item>
         <item>
-         <widget class="QPlainTextEdit" name="textEdit_Chat">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
+         <widget class="QTextEdit" name="textEdit_Chat">
           <property name="styleSheet">
            <string notr="true">background-color:rgb(82,82,82);
 color: rgb(239,239,239);
@@ -140,6 +134,13 @@ border-color:rgb(85,85,85);</string>
           </property>
           <property name="placeholderText">
            <string>Enter a message</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="button_sendImage">
+          <property name="text">
+           <string>Send image</string>
           </property>
          </widget>
         </item>
@@ -208,7 +209,7 @@ border: none;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>667</width>
+     <width>642</width>
      <height>20</height>
     </rect>
    </property>

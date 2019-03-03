@@ -7,7 +7,7 @@
 #include "client.h"
 #include <string>
 
-Server::Server() : idCounterClient_(0)
+Server::Server() : idCounterClient_(0), isReceivingData_(false)
 {    
     connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
     connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
@@ -122,12 +122,13 @@ void Server::acceptError(QAbstractSocket::SocketError socketError) const
 void Server::readyRead(std::shared_ptr<Client> client)
 {
     QJsonParseError error;
-    QJsonDocument document = QJsonDocument::fromJson(client->read().toUtf8(), &error);
-
-    qDebug() << "JSON doc: " << document;
+    QString readData = client->read();
+    QJsonDocument document = QJsonDocument::fromJson(readData.toUtf8(), &error);
 
     if(!document.isNull())
     {
+        qDebug() << "JSON doc: " << document;
+
         if(document.isObject())
         {
             auto object = document.object();
@@ -135,19 +136,19 @@ void Server::readyRead(std::shared_ptr<Client> client)
             {
                 auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
 
+                switch (contentType)
+                {
                 // TODO: fix so messages are still sent if the user is not in the current room
-                if(contentType == Contents::ClientMessage)
+                case Contents::ClientMessage:
                 {
                     for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
                     {
-                        if(connectedClient->getCurrentRoom() == client->getCurrentRoom())
-                        {
-                            connectedClient->sendMessage(QString(client->getName() + ": " + object.find("Message").value().toString()));
-                        }
+                        connectedClient->sendMessage(QString(client->getName() + ": " + object.find("Message").value().toString()));
                     }
+                    break;
                 }
                 // TODO: Fix this
-                else if(contentType == Contents::ClientNewRoom)
+                case Contents::ClientNewRoom:
                 {
                     std::shared_ptr<ChatRoom> room;
                     auto roomName = object.find("RoomName").value().toString();
@@ -178,8 +179,9 @@ void Server::readyRead(std::shared_ptr<Client> client)
 
                         createPublicRoom(roomName);
                     }
+                    break;
                 }
-                else if(contentType == Contents::ClientJoinRoom)
+                case Contents::ClientJoinRoom:
                 {
                     auto roomName = object.find("RoomName").value().toString();
 
@@ -199,6 +201,41 @@ void Server::readyRead(std::shared_ptr<Client> client)
                             break;
                         }
                     }
+                    break;
+                }
+                case Contents::ClientMessageImage:
+                {
+                    qDebug() << "Image incoming";
+                    auto size = object.find("Size").value().toInt();
+                    qDebug() << "Size of image: " << size;
+                    number_ = 0;
+                    if(data_.size())
+                    {
+                        data_.clear();
+                        data_.reserve(size);
+                    }
+                    isReceivingData_ = true;;
+                    break;
+                }
+                case Contents::ClientDone:
+                {
+                    qDebug() << "Client done";
+                    qDebug() << "Number: " << number_;
+                    isReceivingData_ = false;
+                    qDebug() << "Size: " << data_.size();
+
+                    for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
+                    {
+                        connectedClient->sendImage(data_);
+                    }
+
+                    break;
+                }
+                default:
+                {
+
+                    break;
+                }
                 }
             }
             else
@@ -213,7 +250,17 @@ void Server::readyRead(std::shared_ptr<Client> client)
     }
     else
     {
-        qDebug() << "[Ready Read] JSON doc is null: " + error.errorString();
+        if(isReceivingData_)
+        {
+            ++number_;
+            auto data = readData.toUtf8();
+            qDebug() << "Data recieved: " << data.size() << " bytes";
+            data_.append(data);
+        }
+        else
+        {
+            qDebug() << "[Ready Read] JSON doc is null: " + error.errorString();
+        }
     }
 }
 

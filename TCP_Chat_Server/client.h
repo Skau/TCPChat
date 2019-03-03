@@ -20,6 +20,7 @@ private:
     std::shared_ptr<ChatRoom> currentRoom_;
     std::vector<std::shared_ptr<ChatRoom>> allRooms_;
 
+    bool isSendingData_;
     std::queue<QByteArray> documents_;
     QTimer timer_;
 
@@ -33,14 +34,17 @@ public:
     std::shared_ptr<ChatRoom> getCurrentRoom() { return currentRoom_; }
     void joinRoom(std::shared_ptr<ChatRoom> room);
 
+    QTcpSocket* getSocket() { return socket_; }
+
     std::vector<std::shared_ptr<ChatRoom>> getAllRooms() { return allRooms_; }
     void addNewRoom(std::shared_ptr<ChatRoom> room);
     void removeRoom(std::shared_ptr<ChatRoom> room);
 
     void sendMessage(const QString& message);
+    void sendImage(QByteArray &data);
     QString read();
 
-    void addJsonDocument(const QByteArray& document) { documents_.emplace(document); }
+    void addJsonDocument(const QByteArray& document) { documents_.push(document); }
 
 signals:
     void newDataAvailable(std::shared_ptr<Client> client);

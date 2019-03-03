@@ -13,6 +13,8 @@ enum class Contents
 {
     ClientMessage,
     ServerMessage,
+    ClientMessageImage,
+    ServerMessageImage,
     ClientConnected,
     ServerConnected,
     ClientNewRoom,
@@ -21,7 +23,9 @@ enum class Contents
     ServerJoinRoom,
     ClientLeftRoom,
     ServerLeftRoom,
-    ServerClientNames
+    ServerClientNames,
+    ClientDone,
+    ServerDone
 };
 
 enum class RoomType
@@ -39,6 +43,11 @@ private:
     QTcpSocket socket_;
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
+    int number_;
+
+    bool isRecievingData_;
+    QByteArray data_;
+    QString nameOfSender_;
 
 public:
     Client(std::shared_ptr<ConnectionDialog> connectionDialog);
@@ -46,6 +55,7 @@ public:
 
 signals:
     void addMessage(const QString& message);
+    void addImage(const QString& name, const QImage& image);
     void addClients(const std::vector<QString>& names);
     void addNewRoom(const QString& roomName);
     void joinedRoom(const QString& roomName);
@@ -58,6 +68,7 @@ private slots:
     void disconnected();
     void error(QAbstractSocket::SocketError socketError);
     void sendMessage(const QString& message);
+    void sendImage(QByteArray &ba);
     void joinRoom(const QString& roomName);
     void newRoom(const QString& roomName, std::vector<int> clientIndexes);
     void readyRead();

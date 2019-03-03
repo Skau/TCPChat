@@ -13,6 +13,8 @@ enum class Contents
 {
     ClientMessage,
     ServerMessage,
+    ClientMessageImage,
+    ServerMessageImage,
     ClientConnected,
     ServerConnected,
     ClientNewRoom,
@@ -21,7 +23,9 @@ enum class Contents
     ServerJoinRoom,
     ClientLeftRoom,
     ServerLeftRoom,
-    ServerClientNames
+    ServerClientNames,
+    ClientDone,
+    ServerDone,
 };
 
 enum class RoomType
@@ -75,6 +79,10 @@ private:
     std::vector<std::shared_ptr<Client>> clients_;
     std::vector<std::shared_ptr<ChatRoom>> rooms_;
     QTcpServer server_;
+
+    bool isReceivingData_;
+    QByteArray data_;
+    int number_;
 
 public:
     Server();

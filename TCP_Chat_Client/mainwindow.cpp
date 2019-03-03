@@ -2,6 +2,9 @@
 #include "ui_mainwindow.h"
 #include <QDebug>
 #include "inputfilter.h"
+#include <QFileDialog>
+#include <QImageReader>
+#include <QBuffer>
 
 MainWindow::MainWindow(const QString &name, QWidget *parent) :
     QMainWindow(parent), ui(new Ui::MainWindow), name_(name)
@@ -41,15 +44,22 @@ void MainWindow::clearRooms()
 
 void MainWindow::addMessage(const QString &message)
 {
-    ui->textEdit_Chat->appendPlainText(message);
+    ui->textEdit_Chat->append(message);
     QApplication::alert(this);
+}
+
+void MainWindow::addImage(const QString &name, const QImage &image)
+{
+    ui->textEdit_Chat->append(name + ":\n");
+
+    ui->textEdit_Chat->textCursor().insertImage(image);
 }
 
 void MainWindow::addClients(const std::vector<QString> &names)
 {
     for(auto& name : names)
     {
-       ui->list_Clients->addItem(name);
+        ui->list_Clients->addItem(name);
     }
 }
 
@@ -83,6 +93,7 @@ void MainWindow::on_actionDisconnect_triggered()
 void MainWindow::on_button_newRoom_clicked()
 {
     qDebug() << "New room";
+
     //emit newRoom();
 }
 
@@ -119,4 +130,21 @@ void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
     qDebug() << "Double clicked room";
     auto roomName = ui->list_Rooms->item(index.row())->text();
     emit joinRoom(roomName);
+}
+
+void MainWindow::on_button_sendImage_clicked()
+{
+    QString path = QFileDialog::getOpenFileName(this, tr("Select an image"),
+                                                "", tr("PNG (*.png)\n"
+                                                        "JPEG (*.jpg *jpeg)\n"
+                                                        "GIF (*.gif)\n"
+                                                        "Bitmap Files (*.bmp)\n"
+                                                        ));
+
+    auto file = QFile(path);
+    file.open(QIODevice::ReadOnly);
+    QByteArray imageData = file.readAll();
+    emit sendImage(imageData);
+
+    addImage(name_, QImage(path));
 }
