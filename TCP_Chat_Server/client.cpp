@@ -86,6 +86,32 @@ void Client::sendImage(const QString& name, QByteArray& data)
     addJsonDocument(data);
 }
 
+void Client::startVoice()
+{
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerVoiceStart)));
+    QJsonDocument document(object);
+    qDebug() << document;
+    addJsonDocument(document.toJson());
+}
+
+void Client::stopVoice()
+{
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerVoiceEnd)));
+    QJsonDocument document(object);
+    qDebug() << document;
+    addJsonDocument(document.toJson());
+}
+
+void Client::forceWrite(const QByteArray &data)
+{
+    if(socket_)
+    {
+        socket_->write(data);
+    }
+}
+
 void Client::write()
 {
     if(socket_ && documents_.size())

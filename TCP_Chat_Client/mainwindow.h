@@ -31,6 +31,8 @@ signals:
     void newRoom(const QString& roomName, std::vector<int> clientIndexes);
     void joinRoom(const QString& roomName);
     void leftRoom();
+    void startVoice();
+    void endVoice();
 
 public slots:
     void addMessage(const QString& message);
@@ -50,6 +52,10 @@ private slots:
     void on_list_Rooms_doubleClicked(const QModelIndex &index);
 
     void on_button_sendImage_clicked();
+
+    void on_button_Voice_pressed();
+
+    void on_button_Voice_released();
 
 private:
     int selectedName_;

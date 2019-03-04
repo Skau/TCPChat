@@ -9,7 +9,7 @@
 #include <QBuffer>
 #include <QImageReader>
 
-Server::Server() : idCounterClient_(0), isReceivingData_(false)
+Server::Server() : idCounterClient_(0), isReceivingData_(false), isReceivingVoice_(false)
 {
     connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
     connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
@@ -303,21 +303,53 @@ void Server::resolveData()
                             isReceivingData_ = true;
                             break;
                         }
-                        case Contents::ClientDone:
+                        case Contents::ClientVoiceStart:
                         {
-                            if(isReceivingData_)
+                            if(isReceivingData_ || isReceivingVoice_)
                             {
-
+                                qDebug() << "Already receiving data";
+                                return;
                             }
-                            else
+
+                            qDebug() << "Voice incoming from " << client->getName();
+                            if(data_.size())
                             {
-                                qDebug() << "No data was sent";
+                                data_.clear();
+                            }
+                            isReceivingVoice_ = true;
+
+                            clientsReceiving_.clear();
+                            for(auto c : client->getCurrentRoom()->connectedClients)
+                            {
+                                if(c != client)
+                                    clientsReceiving_.push_back(c);
+                            }
+
+                            if(clientsReceiving_.size())
+                            {
+                                for(auto& connectedClient : clientsReceiving_)
+                                {
+                                    connectedClient->startVoice();
+                                }
+                            }
+                            break;
+                        }
+                        case Contents::ClientVoiceEnd:
+                        {
+                            qDebug() << "Voice stopped from " << client->getName();
+                            isReceivingVoice_ = false;
+
+                            if(clientsReceiving_.size())
+                            {
+                                for(auto& connectedClient : clientsReceiving_)
+                                {
+                                    connectedClient->stopVoice();
+                                }
                             }
                             break;
                         }
                         default:
                         {
-
                             break;
                         }
                         }
@@ -348,6 +380,13 @@ void Server::resolveData()
                         {
                             connectedClient->sendImage(clientReceving_->getName(), data_);
                         }
+                    }
+                }
+                else if(isReceivingVoice_)
+                {
+                    for(auto& connectedClient : clientsReceiving_)
+                    {
+                        connectedClient->addJsonDocument(data_);
                     }
                 }
                 else

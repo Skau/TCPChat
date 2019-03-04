@@ -8,8 +8,11 @@
 #include <QTimer>
 #include <queue>
 
+
 class MainWindow;
 class ConnectionDialog;
+class QAudioInput;
+class QAudioOutput;
 
 enum class Contents
 {
@@ -17,6 +20,10 @@ enum class Contents
     ServerMessage,
     ClientMessageImage,
     ServerMessageImage,
+    ClientVoiceStart,
+    ServerVoiceStart,
+    ClientVoiceEnd,
+    ServerVoiceEnd,
     ClientConnected,
     ServerConnected,
     ClientNewRoom,
@@ -54,7 +61,11 @@ private:
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
 
-    bool isRecievingData_;
+    QAudioInput* input_;
+    QAudioOutput* output_;
+    QIODevice* device_;
+
+    bool isRecievingData_, isSendingVoice_, isReciveingVoice_;
     QByteArray data_;
     QString nameOfSender_;
     int dataSize_;
@@ -68,6 +79,8 @@ public:
 
 private:
     void addWriteData(const QByteArray& data) { writeData_.push(data); }
+    void sendSound();
+    void stopSound();
 
 signals:
     void addMessage(const QString& message);
@@ -90,6 +103,8 @@ private slots:
     void newRoom(const QString& roomName, std::vector<int> clientIndexes);
     void write();
     void readyRead();
+    void startVoice();
+    void endVoice();
 };
 
 #endif // CLIENT_H

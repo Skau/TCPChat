@@ -148,3 +148,13 @@ void MainWindow::on_button_sendImage_clicked()
 //    std::shared_ptr<QImage> image = std::make_shared<QImage>(path);
 //    addImage(name_, image);
 }
+
+void MainWindow::on_button_Voice_pressed()
+{
+    emit startVoice();
+}
+
+void MainWindow::on_button_Voice_released()
+{
+    emit endVoice();
+}

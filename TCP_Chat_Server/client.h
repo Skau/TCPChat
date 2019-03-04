@@ -44,6 +44,11 @@ public:
 
     void sendMessage(const QString& message);
     void sendImage(const QString &name, QByteArray &data);
+    void startVoice();
+    void stopVoice();
+
+    void forceWrite(const QByteArray& data);
+
     QByteArray read();
 
     void addJsonDocument(const QByteArray& document) { documents_.push(document); }

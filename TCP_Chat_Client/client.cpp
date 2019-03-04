@@ -13,7 +13,13 @@
 #include "mainwindow.h"
 #include "connectiondialog.h"
 
-Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), connectionDialog_(connectionDialog), isRecievingData_(false)
+#include <QAudioFormat>
+#include <QAudioDeviceInfo>
+#include <QAudioInput>
+#include <QAudioOutput>
+
+
+Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), connectionDialog_(connectionDialog), isRecievingData_(false), isSendingVoice_(false), isReciveingVoice_(false)
 {
     resolveDataTimer_.start(1);
     connect(&resolveDataTimer_, &QTimer::timeout, this, &Client::resolveData);
@@ -29,6 +35,49 @@ Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), con
     connect(&socket_, &QTcpSocket::connected, this, &Client::connected);
     connect(&socket_, &QTcpSocket::disconnected, this, &Client::disconnected);
     connect(&socket_, &QTcpSocket::readyRead, this, &Client::readyRead);
+
+    auto inputDevices = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
+
+    if(!inputDevices.size())
+    {
+        qDebug() << "Could not find an input device";
+        return;
+    }
+
+    QAudioFormat format;
+    format.setSampleRate(44100);
+    format.setChannelCount(2);
+    format.setSampleSize(16);
+    format.setCodec("audio/pcm");
+    format.setByteOrder(QAudioFormat::LittleEndian);
+    format.setSampleType(QAudioFormat::SignedInt);
+
+    //If format isn't supported find the nearest supported
+    QAudioDeviceInfo info(QAudioDeviceInfo::defaultInputDevice());
+    if (!info.isFormatSupported(format))
+        format = info.nearestFormat(format);
+
+    qDebug() << info.deviceName();
+
+    input_ = new QAudioInput(QAudioDeviceInfo::defaultInputDevice(), format);
+    input_->setBufferSize(16384);
+
+    QAudioFormat format2;
+    format2.setSampleRate(44100);
+    format2.setChannelCount(2);
+    format2.setSampleSize(16);
+    format2.setCodec("audio/pcm");
+    format2.setByteOrder(QAudioFormat::LittleEndian);
+    format2.setSampleType(QAudioFormat::SignedInt);
+
+    QAudioDeviceInfo info2(QAudioDeviceInfo::defaultOutputDevice());
+    if (!info2.isFormatSupported(format2))
+        format2 = info2.nearestFormat(format2);
+
+     qDebug() << info2.deviceName();
+
+    output_ = new QAudioOutput(QAudioDeviceInfo::defaultOutputDevice(), format2);
+    output_->setBufferSize(16384);
 }
 
 Client::~Client()
@@ -74,6 +123,8 @@ void Client::connected()
         connect(mainWindow_.get(), &MainWindow::sendImage, this, &Client::sendImage);
         connect(mainWindow_.get(), &MainWindow::newRoom, this, &Client::newRoom);
         connect(mainWindow_.get(), &MainWindow::joinRoom, this, &Client::joinRoom);
+        connect(mainWindow_.get(), &MainWindow::startVoice, this, &Client::startVoice);
+        connect(mainWindow_.get(), &MainWindow::endVoice, this, &Client::endVoice);
         connect(this, &Client::addMessage, mainWindow_.get(), &MainWindow::addMessage);
         connect(this, &Client::addImage, mainWindow_.get(), &MainWindow::addImage);
         connect(this, &Client::addClients, mainWindow_.get(), &MainWindow::addClients);
@@ -149,6 +200,24 @@ void Client::sendImage(QByteArray &data)
     addWriteData(data);
 }
 
+void Client::sendSound()
+{
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientVoiceStart)));
+    object.insert("ID", QJsonValue(ID_));
+    QJsonDocument document(object);
+    addWriteData(document.toJson());
+}
+
+void Client::stopSound()
+{
+    QJsonObject object;
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientVoiceEnd)));
+    object.insert("ID", QJsonValue(ID_));
+    QJsonDocument document(object);
+    addWriteData(document.toJson());
+}
+
 void Client::joinRoom(const QString &roomName)
 {
     qDebug() << "Join room " << roomName;
@@ -201,7 +270,43 @@ void Client::readyRead()
         qDebug() << "Data empty";
     }
 
+    if(isReciveingVoice_)
+    {
+        qDebug() << "Receiving voice...";
+        if(device_)
+        {
+            device_->write(readData.toBase64());
+        }
+        return;
+    }
+
     unresolvedData_ += QString(readData).split('|', QString::SkipEmptyParts);
+}
+
+void Client::startVoice()
+{
+    qDebug() << "Voice started";
+    isSendingVoice_ = true;
+
+    sendSound();
+
+    if(input_)
+    {
+        input_->start(&socket_);
+    }
+}
+
+void Client::endVoice()
+{
+    qDebug() << "Voice ended";
+
+    stopSound();
+
+    if(input_)
+    {
+        input_->stop();
+    }
+    isSendingVoice_ = false;
 }
 
 void Client::resolveData()
@@ -287,6 +392,33 @@ void Client::resolveData()
                             emit addNewRoom(roomName);
                             break;
                         }
+                        case Contents::ServerVoiceStart:
+                        {
+                            isReciveingVoice_ = true;
+                            if(output_)
+                            {
+                                device_ = output_->start();
+                            }
+                            else
+                            {
+                                qDebug() << "No voice output";
+                                return;
+                            }
+
+                            qDebug() << "Start receving voice";
+                            break;
+                        }
+                        case Contents::ServerVoiceEnd:
+                        {
+                            isReciveingVoice_ = false;
+                            if(output_)
+                            {
+                                output_->stop();
+                            }
+
+                            qDebug() << "Stop receiving voice";
+                            break;
+                        }
                         default:
                         {
                             break;
@@ -305,7 +437,7 @@ void Client::resolveData()
             }
             else
             {
-                if(isRecievingData_)
+                if(isRecievingData_ && !isReciveingVoice_)
                 {
                     data_.append(data);
                     qDebug() << "Recieved " << data_.size() << "/" << dataSize_ << " bytes";

@@ -16,6 +16,10 @@ enum class Contents
     ServerMessage,
     ClientMessageImage,
     ServerMessageImage,
+    ClientVoiceStart,
+    ServerVoiceStart,
+    ClientVoiceEnd,
+    ServerVoiceEnd,
     ClientConnected,
     ServerConnected,
     ClientNewRoom,
@@ -26,7 +30,7 @@ enum class Contents
     ServerLeftRoom,
     ServerClientNames,
     ClientDone,
-    ServerDone,
+    ServerDone
 };
 
 enum class RoomType
@@ -88,8 +92,9 @@ private:
 
     QStringList unresolvedData_;
 
-    bool isReceivingData_;
+    bool isReceivingData_, isReceivingVoice_;
     std::shared_ptr<Client> clientReceving_;
+    std::vector<std::shared_ptr<Client>> clientsReceiving_;
     QByteArray data_;
     int dataSize_;
 
