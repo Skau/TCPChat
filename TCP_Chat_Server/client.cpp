@@ -11,7 +11,7 @@ Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(i
     connect(socket, &QTcpSocket::disconnected, this, &Client::disconnected);
     connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
 
-    timer_.start();
+    timer_.start(1);
     connect(&timer_, &QTimer::timeout, this, &Client::write);
 }
 
@@ -31,7 +31,6 @@ void Client::joinRoom(std::shared_ptr<ChatRoom> room)
     object.insert("Contents", static_cast<int>(Contents::ServerJoinRoom));
     object.insert("RoomName", QJsonValue(room->name));
     QJsonDocument document(object);
-    qDebug() << document;
     addJsonDocument(document.toJson());
 }
 
@@ -41,7 +40,6 @@ void Client::sendID()
     object.insert("Contents", static_cast<int>(Contents::ServerConnected));
     object.insert("ID", QJsonValue(id_));
     QJsonDocument document(object);
-    qDebug() << document;
     addJsonDocument(document.toJson());
 }
 
@@ -53,7 +51,6 @@ void Client::addNewRoom(std::shared_ptr<ChatRoom> room)
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerNewRoom)));
     object.insert("RoomName", QJsonValue(room->name));
     QJsonDocument document(object);
-    qDebug() << document;
     addJsonDocument(document.toJson());
 }
 
@@ -68,14 +65,11 @@ void Client::sendMessage(const QString& message)
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerMessage)));
     object.insert("Message", QJsonValue(message));
     QJsonDocument document(object);
-    qDebug() << document;
     addJsonDocument(document.toJson());
 }
 
 void Client::sendImage(QByteArray& data)
 {
-    qDebug() << "Size of data: " << data.size();
-
     QJsonObject object;
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerData)));
     object.insert("Name", QJsonValue(name_));
@@ -83,7 +77,6 @@ void Client::sendImage(QByteArray& data)
     object.insert("Type", QJsonValue(static_cast<int>(DataType::Image)));
     object.insert("Data", QJsonValue(QString(data)));
     QJsonDocument document(object);
-    qDebug() << document;
     addJsonDocument(document.toJson());
 }
 
@@ -93,6 +86,7 @@ void Client::sendSound(QByteArray &data)
     {
         QJsonObject object;
         object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerData)));
+        object.insert("Name", QJsonValue(name_));
         object.insert("Type", QJsonValue(static_cast<int>(DataType::Sound)));
         object.insert("Data", QJsonValue(QString(data)));
         QJsonDocument doc(object);

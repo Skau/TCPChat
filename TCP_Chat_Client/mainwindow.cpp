@@ -78,8 +78,11 @@ void MainWindow::onSendMessage()
     auto message = ui->textEdit_Input->toPlainText();
     if(message.size())
     {
-        ui->textEdit_Input->clear();
-        emit sendMessage(message);
+        if(!QRegExp("\\s*").exactMatch(message))
+        {
+            ui->textEdit_Input->clear();
+            emit sendMessage(message);
+        }
     }
 }
 
@@ -87,19 +90,6 @@ void MainWindow::on_actionDisconnect_triggered()
 {
     qDebug() << "Disconnect triggered";
     emit disconnected();
-}
-
-void MainWindow::on_button_newRoom_clicked()
-{
-    qDebug() << "New room";
-
-    //emit newRoom();
-}
-
-void MainWindow::on_button_LeaveRoom_clicked()
-{
-    qDebug() << "Left room";
-    emit leftRoom();
 }
 
 void MainWindow::showCustomContextMenu(const QPoint& pos)
@@ -121,7 +111,7 @@ void MainWindow::sendPMTrigger()
 {
     qDebug() << selectedName_ << ", " << ui->list_Clients->item(selectedName_)->text();
     auto otherClientName = ui->list_Clients->item(selectedName_)->text();
-    emit newRoom(otherClientName, {selectedName_});
+    //emit newRoom(otherClientName, {selectedName_});
 }
 
 void MainWindow::on_list_Rooms_doubleClicked(const QModelIndex &index)
@@ -143,7 +133,7 @@ void MainWindow::on_button_sendImage_clicked()
 
     auto file = QFile(path);
     file.open(QIODevice::ReadOnly);
-    QByteArray imageData = file.readAll();
+    auto imageData = file.readAll();
     emit sendImage(imageData);
 }
 
@@ -155,11 +145,13 @@ void MainWindow::on_button_Voice_clicked()
     if(toggledVoice_)
     {
         ui->button_Voice->setText("Toggle voice (enabled)");
+        ui->button_sendImage->setEnabled(false);
         emit startVoice();
     }
     else
     {
         ui->button_Voice->setText("Toggle voice (disabled)");
+        ui->button_sendImage->setEnabled(true);
         emit endVoice();
     }
 }

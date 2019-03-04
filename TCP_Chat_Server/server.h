@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <QTimer>
+#include <QJsonDocument>
 
 class Client;
 
@@ -88,7 +89,8 @@ private:
     QTcpServer server_;
 
     QStringList unresolvedData_;
-    bool isResolvingData_;
+    QByteArray currentDataResolving_;
+    QJsonDocument currentDocumentResolving_;
     QTimer timer_;
 
 public:
@@ -125,6 +127,7 @@ public slots:
 private slots:
     void disconnected(std::shared_ptr<Client> client);
     void resolveData();
+    void handlePacket(std::shared_ptr<Client> client, const QJsonObject &object);
 
 };
 

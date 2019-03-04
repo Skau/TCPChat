@@ -7,7 +7,7 @@
 #include <memory>
 #include <QTimer>
 #include <queue>
-
+#include <QJsonDocument>
 
 class MainWindow;
 class ConnectionDialog;
@@ -56,6 +56,8 @@ private:
     QTcpSocket socket_;
     std::queue<QByteArray> writeData_;
     QStringList unresolvedData_;
+    QByteArray currentDataResolving_;
+    QJsonDocument currentDocumentResolving_;
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
 
@@ -75,6 +77,7 @@ public:
 
 private:
     void addWriteData(const QByteArray& data) { writeData_.push(data); }
+    void handlePacket(const QJsonObject& object);
 
 signals:
     void addMessage(const QString& message);

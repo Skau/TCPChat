@@ -1,7 +1,6 @@
 #include "server.h"
 #include <QDebug>
 #include <QNetworkProxy>
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include "client.h"
@@ -9,12 +8,12 @@
 #include <QBuffer>
 #include <QImageReader>
 
-Server::Server() : idCounterClient_(0), isResolvingData_(false)
+Server::Server() : idCounterClient_(0), currentDataResolving_("")
 {
     connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
     connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
 
-    timer_.start();
+    timer_.start(1);
     connect(&timer_, &QTimer::timeout, this, &Server::resolveData);
 }
 
@@ -128,7 +127,6 @@ void Server::acceptError(QAbstractSocket::SocketError socketError) const
 // Slot
 void Server::readyRead(std::shared_ptr<Client> client)
 {
-
     auto readData = client->read();
 
     if(readData.isEmpty())
@@ -137,7 +135,7 @@ void Server::readyRead(std::shared_ptr<Client> client)
         return;
     }
 
-    unresolvedData_ += QString(readData).split('|', QString::SkipEmptyParts);
+    unresolvedData_.append(QString(readData).split('|', QString::SkipEmptyParts));
 }
 
 std::shared_ptr<ChatRoom> Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client>>& allowedClients, const std::vector<std::shared_ptr<Client>> &clients)
@@ -178,179 +176,71 @@ void Server::disconnected(std::shared_ptr<Client> client)
 
 void Server::resolveData()
 {
-    if(unresolvedData_.size() && !isResolvingData_)
+    // No point continuing if no new data
+    if(!unresolvedData_.size()) { return; }
+
+    // If current JSON document is null
+    if(currentDocumentResolving_.isNull())
     {
-        isResolvingData_ = true;
-        auto readData = unresolvedData_.takeFirst().toUtf8();
+        // Append the data
+        currentDataResolving_ += unresolvedData_.takeFirst().toUtf8();
 
-        if(!readData.isEmpty())
-        {
-            QJsonParseError error;
-            QJsonDocument document = QJsonDocument::fromJson(readData, &error);
-
-            while(document.isNull() && unresolvedData_.size())
-            {
-                qDebug() << "Null";
-                readData += unresolvedData_.takeFirst().toUtf8();
-                document = QJsonDocument::fromJson(readData, &error);
-            }
-
-            if(document.isObject())
-            {
-                qDebug() << "JSON doc: " << document;
-                auto object = document.object();
-                if(!object.isEmpty())
-                {
-                    auto ID = object.find("ID").value().toInt();
-                    if(ID == -1)
-                    {
-                        qDebug() << "Invalid ID";
-                        isResolvingData_ = false;
-                        return;
-                    }
-
-                    std::shared_ptr<Client> client;
-                    for(auto& c : clients_)
-                    {
-                        if(c->getID() == ID)
-                        {
-                            client = c;
-                            break;
-                        }
-                    }
-
-                    if(!client.get())
-                    {
-                        qDebug() << "Could not find client!";
-                        isResolvingData_ = false;
-                        return;
-                    }
-
-                    auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-                    switch (contentType)
-                    {
-                    // TODO: fix so messages are still sent if the user is not in the current room
-                    case Contents::ClientMessage:
-                    {
-                        for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
-                        {
-                            connectedClient->sendMessage(QString(client->getName() + ": " + object.find("Message").value().toString()));
-                        }
-                        break;
-                    }
-                        // TODO: Fix this
-                    case Contents::ClientNewRoom:
-                    {
-                        std::shared_ptr<ChatRoom> room;
-                        auto roomName = object.find("RoomName").value().toString();
-                        auto clientIndexes = object.find("ClientIndexes").value().toArray();
-                        // If only one name, it means pm
-                        if(clientIndexes.size() == 1)
-                        {
-                            // Get other client TODO: refactor
-                            auto clientIndexObject = clientIndexes[0].toObject();
-                            auto index = clientIndexObject.find("Index").value().toInt();
-                            auto otherClient = clients_[static_cast<unsigned>(index)];
-
-                            auto r = tryToCreatePrivateRoom(client, otherClient);
-                            if(!r.get())
-                            {
-                                qDebug() << "Failed to create private room";
-                            }
-                        }
-
-                        // If no names
-                        else if(!clientIndexes.size())
-                        {
-                            // Return if room already exists
-                            for(auto& room : rooms_)
-                            {
-                                if(room->name == roomName) { return; }
-                            }
-
-                            createPublicRoom(roomName);
-                        }
-                        break;
-                    }
-                    case Contents::ClientJoinRoom:
-                    {
-                        auto roomName = object.find("RoomName").value().toString();
-
-                        qDebug() << "Client wants to join the room " << roomName;
-
-                        // Return if already in said room
-                        if(roomName == client->getCurrentRoom()->name) { return; }
-
-                        // Find the room
-                        for(auto& room : client->getAllRooms())
-                        {
-                            if(room->name == roomName)
-                            {
-                                // Join
-                                client->joinRoom(room);
-                                updateClientNames(room);
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                    case Contents::ClientData:
-                    {
-                        qDebug() << "Receiving data from " << client->getName();
-                        auto type = static_cast<DataType>(object.find("Type").value().toInt());
-                        auto data = object.find("Data").value().toString().toUtf8();
-                        data = QByteArray::fromBase64(data);
-                        switch (type)
-                        {
-                        case DataType::Sound:
-                        {
-                            data = data.toBase64();
-                            qDebug() << "It's sound";
-                            for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
-                            {
-                                if(connectedClient != client)
-                                    connectedClient->sendSound(data);
-                            }
-                            break;
-                        }
-                        case DataType::Image:
-                        {
-                            qDebug() << "It's an image";
-                            auto size = object.find("Size").value().toInt();
-                            qDebug() << "Recieved " << data.size() << "/" << size << " bytes";
-                            if(data.size() >= size)
-                            {
-                                qDebug() << "Download done";
-                                data = data.toBase64();
-                                for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
-                                {
-                                    qDebug() << "Sending image";
-                                    connectedClient->sendImage(data);
-                                }
-                            }
-                            break;
-                        }
-                        }
-                        break;
-                    }
-                    default:
-                    {
-                        break;
-                    }
-                    }
-                }
-                else
-                {
-                    qDebug() << "[Ready Read] JSON object is empty";
-                }
-            }
-            else
-            {
-                qDebug() << "[Ready Read] JSON document is not an object";
-            }
-        }
-        isResolvingData_ = false;
+        // Create new json document
+        currentDocumentResolving_ = QJsonDocument::fromJson(currentDataResolving_);
     }
+
+    // Check if it's good now
+    if(currentDocumentResolving_.isNull()) { return; }
+
+
+    // Check if it's a complete object
+    if(currentDocumentResolving_.isObject())
+    {
+        auto object = currentDocumentResolving_.object();
+        if(!object.isEmpty())
+        {
+            // Find the client ID
+            auto ID = object.find("ID").value().toInt();
+            if(ID == -1)
+            {
+                qDebug() << "Invalid ID";
+                return;
+            }
+
+            // Find the client
+            std::shared_ptr<Client> client;
+            for(auto& c : clients_)
+            {
+                if(c->getID() == ID)
+                {
+                    client = c;
+                    break;
+                }
+            }
+
+            // Return if not found
+            if(!client.get())
+            {
+                qDebug() << "Could not find client!";
+                return;
+            }
+
+            // Handle the object
+            handlePacket(client, object);
+        }
+        else
+        {
+            qDebug() << "Current JSON object is empty";
+        }
+    }
+    else
+    {
+        qDebug() << "Current JSON document is not an object";
+    }
+
+    // Reset
+    currentDataResolving_.clear();
+    currentDocumentResolving_ = QJsonDocument();
 }
 
 void Server::removeClients()
@@ -408,6 +298,117 @@ void Server::updateClientNames(std::shared_ptr<ChatRoom> room)
         {
             connectedClient->addJsonDocument(document.toJson());
         }
+    }
+}
+
+void Server::handlePacket(std::shared_ptr<Client> client, const QJsonObject& object)
+{
+    auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
+
+    switch (contentType)
+    {
+    case Contents::ClientMessage:
+    {
+        for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
+        {
+            connectedClient->sendMessage(QString(client->getName() + ": " + object.find("Message").value().toString()));
+        }
+        break;
+    }
+    case Contents::ClientNewRoom:
+    {
+        std::shared_ptr<ChatRoom> room;
+        auto roomName = object.find("RoomName").value().toString();
+        auto clientIndexes = object.find("ClientIndexes").value().toArray();
+        // If only one name, it means pm
+        if(clientIndexes.size() == 1)
+        {
+            // Get other client TODO: refactor
+            auto clientIndexObject = clientIndexes[0].toObject();
+            auto index = clientIndexObject.find("Index").value().toInt();
+            auto otherClient = clients_[static_cast<unsigned>(index)];
+
+            auto r = tryToCreatePrivateRoom(client, otherClient);
+            if(!r.get())
+            {
+                qDebug() << "Failed to create private room";
+            }
+        }
+
+        // If no names
+        else if(!clientIndexes.size())
+        {
+            // Return if room already exists
+            for(auto& room : rooms_)
+            {
+                if(room->name == roomName) { return; }
+            }
+
+            createPublicRoom(roomName);
+        }
+        break;
+    }
+    case Contents::ClientJoinRoom:
+    {
+        auto roomName = object.find("RoomName").value().toString();
+
+        qDebug() << "Client wants to join the room " << roomName;
+
+        // Return if already in said room
+        if(roomName == client->getCurrentRoom()->name) { return; }
+
+        // Find the room
+        for(auto& room : client->getAllRooms())
+        {
+            if(room->name == roomName)
+            {
+                // Join
+                client->joinRoom(room);
+                updateClientNames(room);
+                break;
+            }
+        }
+        break;
+    }
+    case Contents::ClientData:
+    {
+        qDebug() << "Received data from " << client->getName();
+        auto type = static_cast<DataType>(object.find("Type").value().toInt());
+        auto data = object.find("Data").value().toString().toUtf8();
+        switch (type)
+        {
+        case DataType::Sound:
+        {
+            qDebug() << "It's sound";
+            for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
+            {
+                if(connectedClient != client)
+                    connectedClient->sendSound(data);
+            }
+            break;
+        }
+        case DataType::Image:
+        {
+            qDebug() << "It's an image";
+            auto size = object.find("Size").value().toInt();
+            qDebug() << "Recieved " << data.size() << "/" << size << " bytes";
+            if(data.size() >= size)
+            {
+                for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
+                {
+                    qDebug() << "Sending image";
+                    connectedClient->sendImage(data);
+                }
+            }
+            break;
+        }
+        }
+        break;
+    }
+    default:
+    {
+        break;
+    }
     }
 }
 

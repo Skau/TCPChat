@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>642</width>
-    <height>462</height>
+    <width>896</width>
+    <height>556</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
@@ -60,19 +66,8 @@ color: rgb(239,239,239);</string>
 color: rgb(239,239,239);
 border: none;</string>
           </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="button_newRoom">
-          <property name="text">
-           <string>New room</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="button_LeaveRoom">
-          <property name="text">
-           <string>Leave Room</string>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
           </property>
          </widget>
         </item>
@@ -102,6 +97,12 @@ border: none;</string>
 color: rgb(239,239,239);
 border: none;</string>
           </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
           <property name="readOnly">
            <bool>true</bool>
           </property>
@@ -118,19 +119,40 @@ border: none;</string>
           <property name="minimumSize">
            <size>
             <width>0</width>
-            <height>0</height>
+            <height>50</height>
            </size>
           </property>
           <property name="maximumSize">
            <size>
             <width>16777215</width>
-            <height>40</height>
+            <height>50</height>
            </size>
           </property>
+          <property name="autoFillBackground">
+           <bool>false</bool>
+          </property>
           <property name="styleSheet">
-           <string notr="true">background-color:rgb(82,82,82);
+           <string notr="true">background-color:rgb(95,95,95);
 color: rgb(239,239,239);
 border-color:rgb(85,85,85);</string>
+          </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhMultiLine</set>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Sunken</enum>
+          </property>
+          <property name="lineWidth">
+           <number>1</number>
+          </property>
+          <property name="midLineWidth">
+           <number>0</number>
+          </property>
+          <property name="backgroundVisible">
+           <bool>false</bool>
           </property>
           <property name="placeholderText">
            <string>Enter a message</string>
@@ -138,18 +160,56 @@ border-color:rgb(85,85,85);</string>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="button_sendImage">
-          <property name="text">
-           <string>Send image</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="button_Voice">
-          <property name="text">
-           <string>Toggle voice (disabled)</string>
-          </property>
-         </widget>
+         <layout class="QVBoxLayout" name="verticalLayout_5">
+          <item>
+           <widget class="QPushButton" name="button_sendImage">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>350</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Send image</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="button_Voice">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>350</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Toggle voice (disabled)</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </item>
@@ -203,6 +263,12 @@ border-color:rgb(85,85,85);</string>
 color: rgb(239,239,239);
 border: none;</string>
           </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
          </widget>
         </item>
        </layout>
@@ -216,7 +282,7 @@ border: none;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>642</width>
+     <width>896</width>
      <height>20</height>
     </rect>
    </property>
