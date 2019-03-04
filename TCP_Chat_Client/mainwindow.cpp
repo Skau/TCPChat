@@ -155,3 +155,8 @@ void MainWindow::on_button_Voice_clicked()
         emit endVoice();
     }
 }
+
+void MainWindow::on_horizontalSlider_sliderMoved(int position)
+{
+    emit setInputVolume(position);
+}

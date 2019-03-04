@@ -33,6 +33,7 @@ signals:
     void joinRoom(const QString& roomName);
     void startVoice();
     void endVoice();
+    void setInputVolume(int vol);
 
 public slots:
     void addMessage(const QString& message);
@@ -50,6 +51,7 @@ private slots:
     void on_button_sendImage_clicked();
     void on_button_Voice_clicked();
 
+    void on_horizontalSlider_sliderMoved(int position);
 };
 
 #endif // MAINWINDOW_H

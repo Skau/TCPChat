@@ -125,6 +125,7 @@ void Client::connected()
         connect(mainWindow_.get(), &MainWindow::joinRoom, this, &Client::joinRoom);
         connect(mainWindow_.get(), &MainWindow::startVoice, this, &Client::startVoice);
         connect(mainWindow_.get(), &MainWindow::endVoice, this, &Client::endVoice);
+        connect(mainWindow_.get(), &MainWindow::setInputVolume,this,&Client::changeInputVolume);
         connect(this, &Client::addMessage, mainWindow_.get(), &MainWindow::addMessage);
         connect(this, &Client::addImage, mainWindow_.get(), &MainWindow::addImage);
         connect(this, &Client::addClients, mainWindow_.get(), &MainWindow::addClients);
@@ -304,6 +305,13 @@ void Client::sendBitsOfVoice()
     }
 }
 
+void Client::changeInputVolume(int vol)
+{
+    double x = vol;
+    x = x/100;
+    output_->setVolume(x);
+}
+
 void Client::resolveData()
 {
     // No point continuing if no new data
@@ -399,7 +407,7 @@ void Client::handlePacket(const QJsonObject &object)
         case DataType::Sound:
         {
             auto name = object.find("Name").value().toString();
-            qDebug() << "Received voice from " << name;
+            //qDebug() << "Received voice from " << name;
             data = QByteArray::fromBase64(data);
             outputDevice_->write(data, data.size());
             break;

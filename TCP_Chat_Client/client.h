@@ -103,6 +103,7 @@ private slots:
     void startVoice();
     void endVoice();
     void sendBitsOfVoice();
+    void changeInputVolume(int vol);
 };
 
 #endif // CLIENT_H
