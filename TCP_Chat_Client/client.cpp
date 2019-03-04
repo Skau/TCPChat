@@ -264,21 +264,24 @@ void Client::write()
 // From server
 void Client::readyRead()
 {
+    if(isReciveingVoice_)
+    {
+        qDebug() << "Receiving voice...";
+        if(device_)
+        {
+            auto readData = socket_.readAll();
+            device_->write(readData, readData.size());
+        }
+        return;
+    }
+
     auto readData = socket_.readAll();
     if(readData.isEmpty())
     {
         qDebug() << "Data empty";
     }
 
-    if(isReciveingVoice_)
-    {
-        qDebug() << "Receiving voice...";
-        if(device_)
-        {
-            device_->write(readData.toBase64());
-        }
-        return;
-    }
+
 
     unresolvedData_ += QString(readData).split('|', QString::SkipEmptyParts);
 }

@@ -129,6 +129,16 @@ void Server::acceptError(QAbstractSocket::SocketError socketError) const
 void Server::readyRead(std::shared_ptr<Client> client)
 {
     auto readData = client->read();
+
+   if(isReceivingVoice_)
+    {
+        for(auto& connectedClient : clientsReceiving_)
+        {
+            connectedClient->forceWrite(readData);
+        }
+        return;
+    }
+
     if(readData.isEmpty())
     {
         qDebug() << "Data empty";
@@ -380,13 +390,6 @@ void Server::resolveData()
                         {
                             connectedClient->sendImage(clientReceving_->getName(), data_);
                         }
-                    }
-                }
-                else if(isReceivingVoice_)
-                {
-                    for(auto& connectedClient : clientsReceiving_)
-                    {
-                        connectedClient->addJsonDocument(data_);
                     }
                 }
                 else
