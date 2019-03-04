@@ -6,6 +6,7 @@
 #include <QHostAddress>
 #include <memory>
 #include <QTimer>
+#include <queue>
 
 class MainWindow;
 class ConnectionDialog;
@@ -48,6 +49,7 @@ private:
     int ID_;
     QString name_;
     QTcpSocket socket_;
+    std::queue<QByteArray> writeData_;
     QStringList unresolvedData_;
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
@@ -57,11 +59,15 @@ private:
     QString nameOfSender_;
     int dataSize_;
 
-    QTimer timer_;
+    QTimer resolveDataTimer_;
+    QTimer writeDataTimer_;
 
 public:
     Client(std::shared_ptr<ConnectionDialog> connectionDialog);
     virtual ~Client();
+
+private:
+    void addWriteData(const QByteArray& data) { writeData_.push(data); }
 
 signals:
     void addMessage(const QString& message);
@@ -82,6 +88,7 @@ private slots:
     void sendImage(QByteArray &ba);
     void joinRoom(const QString& roomName);
     void newRoom(const QString& roomName, std::vector<int> clientIndexes);
+    void write();
     void readyRead();
 };
 

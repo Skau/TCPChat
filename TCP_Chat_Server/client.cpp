@@ -74,7 +74,6 @@ void Client::sendMessage(const QString& message)
 
 void Client::sendImage(const QString& name, QByteArray& data)
 {
-    isSendingData_ = true;
     QJsonObject object;
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerMessageImage)));
     object.insert("Name", QJsonValue(name));
@@ -82,21 +81,14 @@ void Client::sendImage(const QString& name, QByteArray& data)
     object.insert("Size", QJsonValue(dataToSend));
     QJsonDocument document(object);
     qDebug() << document;
-    socket_->write(document.toJson() + "|");
+    addJsonDocument(document.toJson());
 
-    int dataSent = 0;
-    while(dataSent < dataToSend)
-    {
-        dataSent += socket_->write(data + "|");
-        qDebug() << "Written " << dataSent << "/" << dataToSend << " bytes";
-    }
-
-    isSendingData_= false;
+    addJsonDocument(data);
 }
 
 void Client::write()
 {
-    if(socket_ && documents_.size() && !isSendingData_)
+    if(socket_ && documents_.size())
     {
         auto doc = documents_.front();
         socket_->write(doc + "|");

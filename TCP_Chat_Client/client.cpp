@@ -15,8 +15,11 @@
 
 Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), connectionDialog_(connectionDialog), isRecievingData_(false)
 {
-    timer_.start(1);
-    connect(&timer_, &QTimer::timeout, this, &Client::resolveData);
+    resolveDataTimer_.start(1);
+    connect(&resolveDataTimer_, &QTimer::timeout, this, &Client::resolveData);
+
+    writeDataTimer_.start(1);
+    connect(&writeDataTimer_, &QTimer::timeout, this, &Client::write);
 
     connect(connectionDialog_.get(), &ConnectionDialog::connectToServer, this, &Client::connectToHost);
     connect(this, &Client::setCurrentConnectionStatus, connectionDialog_.get(), &ConnectionDialog::setStatus);
@@ -59,7 +62,7 @@ void Client::connected()
     object.insert("Name", QJsonValue(name_));
     QJsonDocument document(object);
 
-    socket_.write(document.toJson() + "|");
+    addWriteData(document.toJson());
 
     connectionDialog_->hide();
 
@@ -126,7 +129,7 @@ void Client::sendMessage(const QString &message)
     object.insert("Message", QJsonValue(message));
     QJsonDocument document(object);
 
-    socket_.write(document.toJson() + "|");
+    addWriteData(document.toJson());
 }
 
 void Client::sendImage(QByteArray &data)
@@ -141,14 +144,9 @@ void Client::sendImage(QByteArray &data)
     qDebug() << "Data to send: " << dataToSend;
     object.insert("Size", QJsonValue(dataToSend));
     QJsonDocument document(object);
-    socket_.write(document.toJson() + "|");
+    addWriteData(document.toJson());
 
-    int dataSent = 0;
-    while(dataSent < dataToSend)
-    {
-        dataSent += socket_.write(data + "|");
-        qDebug() << "Written " << dataSent << "/" << dataToSend << " bytes";
-    }
+    addWriteData(data);
 }
 
 void Client::joinRoom(const QString &roomName)
@@ -161,7 +159,7 @@ void Client::joinRoom(const QString &roomName)
     object.insert("RoomName", QJsonValue(roomName));
 
     QJsonDocument document;
-    socket_.write(document.toJson() + "|");
+    addWriteData(document.toJson());
 }
 
 void Client::newRoom(const QString &roomName, std::vector<int> clientIndexes)
@@ -181,7 +179,17 @@ void Client::newRoom(const QString &roomName, std::vector<int> clientIndexes)
     object.insert("ClientIndexes", clients);
 
     QJsonDocument doc(object);
-    socket_.write(doc.toJson() + "|");
+    addWriteData(doc.toJson());
+}
+
+void Client::write()
+{
+    if(writeData_.size())
+    {
+        auto data = writeData_.front();
+        writeData_.pop();
+        socket_.write(data + "|");
+    }
 }
 
 // From server
