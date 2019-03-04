@@ -5,6 +5,7 @@
 #include <QTcpSocket>
 #include <QHostAddress>
 #include <memory>
+#include <QTimer>
 
 class MainWindow;
 class ConnectionDialog;
@@ -44,8 +45,10 @@ class Client : public QObject
     Q_OBJECT
 
 private:
+    int ID_;
     QString name_;
     QTcpSocket socket_;
+    QStringList unresolvedData_;
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
 
@@ -53,6 +56,8 @@ private:
     QByteArray data_;
     QString nameOfSender_;
     int dataSize_;
+
+    QTimer timer_;
 
 public:
     Client(std::shared_ptr<ConnectionDialog> connectionDialog);
@@ -67,6 +72,7 @@ signals:
     void setCurrentConnectionStatus(const std::string& string);
 
 private slots:
+    void resolveData();
     void connectToHost(const QString& name, const QHostAddress& ip, const quint16& port);
     void hostFound();
     void connected();

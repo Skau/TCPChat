@@ -6,6 +6,7 @@
 #include <QTcpSocket>
 #include <vector>
 #include <memory>
+#include <QTimer>
 
 class Client;
 
@@ -85,9 +86,14 @@ private:
     std::vector<std::shared_ptr<ChatRoom>> rooms_;
     QTcpServer server_;
 
+    QStringList unresolvedData_;
+
     bool isReceivingData_;
+    std::shared_ptr<Client> clientReceving_;
     QByteArray data_;
     int dataSize_;
+
+    QTimer timer_;
 
 public:
     Server();
@@ -122,6 +128,7 @@ public slots:
 
 private slots:
     void disconnected(std::shared_ptr<Client> client);
+    void resolveData();
 
 };
 

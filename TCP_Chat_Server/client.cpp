@@ -35,6 +35,16 @@ void Client::joinRoom(std::shared_ptr<ChatRoom> room)
     addJsonDocument(document.toJson());
 }
 
+void Client::sendID()
+{
+    QJsonObject object;
+    object.insert("Contents", static_cast<int>(Contents::ServerConnected));
+    object.insert("ID", QJsonValue(id_));
+    QJsonDocument document(object);
+    qDebug() << document;
+    addJsonDocument(document.toJson());
+}
+
 void Client::addNewRoom(std::shared_ptr<ChatRoom> room)
 {
     allRooms_.push_back(room);
@@ -72,9 +82,14 @@ void Client::sendImage(const QString& name, QByteArray& data)
     object.insert("Size", QJsonValue(dataToSend));
     QJsonDocument document(object);
     qDebug() << document;
-    socket_->write(document.toJson());
+    socket_->write(document.toJson() + "|");
 
-    socket_->write(data);
+    int dataSent = 0;
+    while(dataSent < dataToSend)
+    {
+        dataSent += socket_->write(data + "|");
+        qDebug() << "Written " << dataSent << "/" << dataToSend << " bytes";
+    }
 
     isSendingData_= false;
 }
@@ -84,12 +99,12 @@ void Client::write()
     if(socket_ && documents_.size() && !isSendingData_)
     {
         auto doc = documents_.front();
-        socket_->write(doc.toStdString().c_str());
+        socket_->write(doc + "|");
         documents_.pop();
     }
 }
 
-QString Client::read()
+QByteArray Client::read()
 {
     if(socket_)
     {

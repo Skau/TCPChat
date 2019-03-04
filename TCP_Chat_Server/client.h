@@ -36,13 +36,15 @@ public:
 
     QTcpSocket* getSocket() { return socket_; }
 
+    void sendID();
+
     std::vector<std::shared_ptr<ChatRoom>> getAllRooms() { return allRooms_; }
     void addNewRoom(std::shared_ptr<ChatRoom> room);
     void removeRoom(std::shared_ptr<ChatRoom> room);
 
     void sendMessage(const QString& message);
     void sendImage(const QString &name, QByteArray &data);
-    QString read();
+    QByteArray read();
 
     void addJsonDocument(const QByteArray& document) { documents_.push(document); }
 
