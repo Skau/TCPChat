@@ -46,3 +46,8 @@ __attribute__((noreturn)) void ConnectionDialog::on_button_Exit_clicked()
 {
     exit(0);
 }
+
+void ConnectionDialog::on_pushButton_clicked()
+{
+    ui->line_IP->setText("81.167.129.214");
+}

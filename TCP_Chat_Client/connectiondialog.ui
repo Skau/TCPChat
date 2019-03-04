@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>512</width>
-    <height>217</height>
+    <height>203</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,10 +18,65 @@
 color: rgb(239,239,239);</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="2" column="1">
+   <item row="6" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <property name="topMargin">
+      <number>9</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="label_StatusTitle">
+       <property name="maximumSize">
+        <size>
+         <width>41</width>
+         <height>12</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Status:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_CurrentStatus">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>1000046</width>
+         <height>12</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Disconnected</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="4" column="1">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>15</width>
+       <height>16</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="3" column="1">
     <layout class="QHBoxLayout" name="horizontalLayout_4">
      <item>
-      <spacer name="horizontalSpacer_4">
+      <spacer name="horizontalSpacer_6">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -31,6 +86,53 @@ color: rgb(239,239,239);</string>
        <property name="sizeHint" stdset="0">
         <size>
          <width>35</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>64</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color:rgb(82,82,82);
+color: rgb(239,239,239);
+border: none;
+margin:5px;</string>
+       </property>
+       <property name="text">
+        <string>Martins IP</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_5">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
          <height>20</height>
         </size>
        </property>
@@ -72,7 +174,7 @@ margin: 5px;
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>60</width>
+         <width>20</width>
          <height>20</height>
         </size>
        </property>
@@ -89,7 +191,7 @@ margin: 5px;
        <property name="minimumSize">
         <size>
          <width>0</width>
-         <height>45</height>
+         <height>0</height>
         </size>
        </property>
        <property name="maximumSize">
@@ -109,44 +211,21 @@ margin:5px;</string>
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item row="4" column="1">
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <property name="topMargin">
-      <number>9</number>
-     </property>
      <item>
-      <widget class="QLabel" name="label_StatusTitle">
-       <property name="maximumSize">
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
         <size>
-         <width>41</width>
-         <height>12</height>
+         <width>35</width>
+         <height>20</height>
         </size>
        </property>
-       <property name="text">
-        <string>Status:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_CurrentStatus">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>1000046</width>
-         <height>12</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Disconnected</string>
-       </property>
-      </widget>
+      </spacer>
      </item>
     </layout>
    </item>
@@ -267,7 +346,7 @@ color: rgb(239,239,239);
 border: none;</string>
            </property>
            <property name="text">
-            <string>skau.hopto.org</string>
+            <string>127.0.0.1</string>
            </property>
            <property name="readOnly">
             <bool>false</bool>
@@ -351,22 +430,6 @@ border: none;</string>
       </layout>
      </item>
     </layout>
-   </item>
-   <item row="3" column="1">
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>15</width>
-       <height>16</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>

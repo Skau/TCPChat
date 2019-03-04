@@ -25,7 +25,7 @@ public:
     ~MainWindow();
 
 signals:
-    void startServer(const QHostAddress& address, const quint16& port);
+    void startServer(const quint16& port);
     void stopServer();
     void selectedRoom(const int& index);
 

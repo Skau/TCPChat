@@ -85,14 +85,12 @@ void MainWindow::removeClientName(std::shared_ptr<Client> client)
 
 void MainWindow::on_button_StartServer_clicked()
 {
-    auto ip = QHostAddress(ui->line_IP->text());
-
     bool isNumeric;
     auto port = ui->line_Port->text().toUShort(&isNumeric);
 
     if(isNumeric)
     {
-        emit startServer(ip, port);
+        emit startServer(port);
         ui->statusBar->showMessage("Server connected", 2000);
         ui->label_Status->setText("Server status: Connected");
     }

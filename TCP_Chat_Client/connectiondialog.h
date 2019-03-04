@@ -27,6 +27,8 @@ private slots:
 
     __attribute__((noreturn)) void on_button_Exit_clicked();
 
+    void on_pushButton_clicked();
+
 private:
     Ui::ConnectionDialog *ui;
 };

@@ -116,7 +116,7 @@ signals:
     void changeRoomName(const QString& newName, int index);
 
 public slots:
-    void startServer(const QHostAddress& address, const quint16& port);
+    void startServer(const quint16& port);
     void stopServer();
     void newConnection();
     void acceptError(QAbstractSocket::SocketError socketError) const;
