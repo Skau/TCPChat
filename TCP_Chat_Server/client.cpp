@@ -11,7 +11,7 @@ Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(i
     connect(socket, &QTcpSocket::disconnected, this, &Client::disconnected);
     connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
 
-    timer_.start(16);
+    timer_.start(2);
     connect(&timer_, &QTimer::timeout, this, &Client::write);
 }
 

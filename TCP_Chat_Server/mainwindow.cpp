@@ -83,7 +83,6 @@ void MainWindow::removeClientName(std::shared_ptr<Client> client)
     }
 }
 
-
 void MainWindow::on_button_StartServer_clicked()
 {
     auto ip = QHostAddress(ui->line_IP->text());

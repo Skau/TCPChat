@@ -14,7 +14,7 @@ Server::Server() : idCounterClient_(0), isReceivingData_(false)
     connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
     connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
 
-    timer_.start(16);
+    timer_.start(1);
     connect(&timer_, &QTimer::timeout, this, &Server::resolveData);
 }
 
@@ -133,8 +133,6 @@ void Server::readyRead(std::shared_ptr<Client> client)
     {
         qDebug() << "Data empty";
     }
-
-    QString d(readData);
 
     unresolvedData_ += QString(readData).split('|', QString::SkipEmptyParts);
 }
