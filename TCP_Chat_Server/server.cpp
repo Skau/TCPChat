@@ -1,20 +1,19 @@
 #include "server.h"
 #include <QDebug>
 #include <QNetworkProxy>
-#include <QJsonObject>
 #include <QJsonArray>
 #include "client.h"
 #include <string>
 #include <QBuffer>
 #include <QImageReader>
 
-Server::Server() : idCounterClient_(0), currentDataResolving_("")
+Server::Server() : idCounterClient_(0)
 {
     connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
     connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
 
+    connect(&timer_, &QTimer::timeout, this, &Server::handlePacket);
     timer_.start(1);
-    connect(&timer_, &QTimer::timeout, this, &Server::resolveData);
 }
 
 Server::~Server()
@@ -85,7 +84,7 @@ void Server::newConnection()
                     // Create and setup new client
                     ++idCounterClient_;
                     auto client = std::make_shared<Client>(idCounterClient_, name, socket);
-                    connect(client.get(), &Client::newDataAvailable, this, &Server::readyRead);
+                    connect(client.get(), &Client::packetReady, this, &Server::addPacket);
                     connect(client.get(), &Client::clientDisconnected, this, &Server::disconnected);
 
                     // Add client
@@ -124,20 +123,6 @@ void Server::acceptError(QAbstractSocket::SocketError socketError) const
     emit acceptClientError(socketError);
 }
 
-// Slot
-void Server::readyRead(std::shared_ptr<Client> client)
-{
-    auto readData = client->read();
-
-    if(readData.isEmpty())
-    {
-        qDebug() << "Data empty";
-        return;
-    }
-
-    unresolvedData_.append(QString(readData).split('|', QString::SkipEmptyParts));
-}
-
 std::shared_ptr<ChatRoom> Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client>>& allowedClients, const std::vector<std::shared_ptr<Client>> &clients)
 {
     rooms_.emplace_back(std::make_shared<ChatRoom>(rooms_.size(), name, type, allowedClients, clients));
@@ -152,6 +137,11 @@ void Server::selectedRoom(const int &index)
     auto room = rooms_[static_cast<unsigned int>(index)];
 
     emit addClientNames(room);
+}
+
+void Server::addPacket(std::shared_ptr<Client> client, const QJsonObject &object)
+{
+    packets_.emplace(Packet{client, object});
 }
 
 void Server::disconnected(std::shared_ptr<Client> client)
@@ -172,98 +162,6 @@ void Server::disconnected(std::shared_ptr<Client> client)
 
         updateClientNames(room);
     }
-}
-
-void Server::resolveData()
-{
-    // TODO:
-    // TL:DR
-    // Each client needs to finish receiving its data with its own ReadyRead before passing it on to be handled,
-    // because as it stands each client just passes on its data immidieatly.
-
-    // If the packet is too big the whole packet won't come at once.
-    // This is currently being handled, but in a too naive way.
-    // The problem arises when several clients passes on its data before
-    // this next part can finish creating the ongoing JSON document.
-    // The current implementation assumes that all incoming data is part of the JSON document that is currently
-    // under construction, and will continue to append its data to the bytearray until it is a
-    // completed JSON document. So if some other data comes inbetween that is not a part of the current JSON document in construction,
-    // the freeze occurs and no further data will be sent, because it will append the wrong data and try to finish the current JSON document forver.
-    // This is impossible to fix in the current implementation, because there is no way to differ the data if there is not enough data in the first place to complete the JSON document.
-
-    // So remove this next part, and let the individual clients have it's own ReadyRead.
-    // When they have individually successfully completed a JSON document, pass it on to be sent to other clients.
-    // The only problem left then is that a person can't send a picture while talking,
-    // because that readyRead can't differ the data and the bug will return.
-    // All other problems *should* be solved.
-
-
-
-
-    // No point continuing if no new data
-    if(!unresolvedData_.size()) { return; }
-
-    // If current JSON document is null
-    if(currentDocumentResolving_.isNull())
-    {
-        // Append the data
-        currentDataResolving_ += unresolvedData_.takeFirst().toUtf8();
-
-        // Create new json document
-        currentDocumentResolving_ = QJsonDocument::fromJson(currentDataResolving_);
-    }
-
-    // Check if it's good now
-    if(currentDocumentResolving_.isNull()) { return; }
-
-    // Check if it's a complete object
-    if(currentDocumentResolving_.isObject())
-    {
-        auto object = currentDocumentResolving_.object();
-        if(!object.isEmpty())
-        {
-            // Find the client ID
-            auto ID = object.find("ID").value().toInt();
-            if(ID == -1)
-            {
-                qDebug() << "Invalid ID";
-                return;
-            }
-
-            // Find the client
-            std::shared_ptr<Client> client;
-            for(auto& c : clients_)
-            {
-                if(c->getID() == ID)
-                {
-                    client = c;
-                    break;
-                }
-            }
-
-            // Return if not found
-            if(!client.get())
-            {
-                qDebug() << "Could not find client!";
-                return;
-            }
-
-            // Handle the object
-            handlePacket(client, object);
-        }
-        else
-        {
-            qDebug() << "Current JSON object is empty";
-        }
-    }
-    else
-    {
-        qDebug() << "Current JSON document is not an object";
-    }
-
-    // Reset
-    currentDataResolving_.clear();
-    currentDocumentResolving_ = QJsonDocument();
 }
 
 void Server::removeClients()
@@ -324,8 +222,15 @@ void Server::updateClientNames(std::shared_ptr<ChatRoom> room)
     }
 }
 
-void Server::handlePacket(std::shared_ptr<Client> client, const QJsonObject& object)
+void Server::handlePacket()
 {
+    if(!packets_.size()) { return; }
+
+    auto packet = packets_.front();
+    auto client = packet.client;
+    auto object = packet.object;
+    packets_.pop();
+
     auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
 
     switch (contentType)

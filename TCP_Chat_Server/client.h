@@ -6,6 +6,7 @@
 #include <memory>
 #include <QTimer>
 #include <queue>
+#include <QJsonDocument>
 
 struct ChatRoom;
 
@@ -23,6 +24,11 @@ private:
     bool isSendingData_;
     std::queue<QByteArray> documents_;
     QTimer timer_;
+    QTimer resolveDataTimer_;
+
+    QStringList unresolvedData_;
+    QByteArray currentDataResolving_;
+    QJsonDocument currentDocumentResolving_;
 
 public:
     Client(const qint16& id, const QString name, QTcpSocket* socket);
@@ -44,16 +50,14 @@ public:
 
     void sendMessage(const QString& message);
     void sendImage(const QString& name, QByteArray &data);
-
     void sendSound(const QString& name, QByteArray &data);
-
-    QByteArray read();
 
     void addJsonDocument(const QByteArray& document) { documents_.push(document); }
 
 signals:
     void newDataAvailable(std::shared_ptr<Client> client);
     void clientDisconnected(std::shared_ptr<Client> client);
+    void packetReady(std::shared_ptr<Client> client, const QJsonObject& object);
 
 public slots:
     void disconnected();
@@ -61,7 +65,7 @@ public slots:
 private slots:
     void readyRead();
     void write();
-
+    void resolveData();
 
 };
 

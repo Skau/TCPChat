@@ -8,6 +8,8 @@
 #include <memory>
 #include <QTimer>
 #include <QJsonDocument>
+#include <QJsonObject>
+#include <queue>
 
 class Client;
 
@@ -78,6 +80,12 @@ struct ChatRoom
     }
 };
 
+struct Packet
+{
+    std::shared_ptr<Client> client;
+    QJsonObject object;
+};
+
 class Server : public QObject
 {
     Q_OBJECT
@@ -86,11 +94,9 @@ private:
     quint16 idCounterClient_;
     std::vector<std::shared_ptr<Client>> clients_;
     std::vector<std::shared_ptr<ChatRoom>> rooms_;
+    std::queue<Packet> packets_;
     QTcpServer server_;
 
-    QStringList unresolvedData_;
-    QByteArray currentDataResolving_;
-    QJsonDocument currentDocumentResolving_;
     QTimer timer_;
 
 public:
@@ -120,14 +126,13 @@ public slots:
     void stopServer();
     void newConnection();
     void acceptError(QAbstractSocket::SocketError socketError) const;
-    void readyRead(std::shared_ptr<Client> client);
     std::shared_ptr<ChatRoom> createRoom(const QString& name, const RoomType& type = RoomType::Public, const std::vector<std::shared_ptr<Client>>& allowedClients = {}, const std::vector<std::shared_ptr<Client>>& clients = {});
     void selectedRoom(const int& index);
+    void addPacket(std::shared_ptr<Client> client, const QJsonObject& object);
 
 private slots:
     void disconnected(std::shared_ptr<Client> client);
-    void resolveData();
-    void handlePacket(std::shared_ptr<Client> client, const QJsonObject &object);
+    void handlePacket();
 
 };
 
