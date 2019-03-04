@@ -322,7 +322,6 @@ void Client::resolveData()
     // Check if it's good now
     if(currentDocumentResolving_.isNull()) { return; }
 
-
     if(currentDocumentResolving_.isObject())
     {
         auto object = currentDocumentResolving_.object();

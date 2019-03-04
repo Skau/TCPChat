@@ -68,11 +68,11 @@ void Client::sendMessage(const QString& message)
     addJsonDocument(document.toJson());
 }
 
-void Client::sendImage(QByteArray& data)
+void Client::sendImage(const QString& name, QByteArray& data)
 {
     QJsonObject object;
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerData)));
-    object.insert("Name", QJsonValue(name_));
+    object.insert("Name", QJsonValue(name));
     object.insert("Size", QJsonValue(data.size()));
     object.insert("Type", QJsonValue(static_cast<int>(DataType::Image)));
     object.insert("Data", QJsonValue(QString(data)));
@@ -80,13 +80,13 @@ void Client::sendImage(QByteArray& data)
     addJsonDocument(document.toJson());
 }
 
-void Client::sendSound(QByteArray &data)
+void Client::sendSound(const QString& name, QByteArray &data)
 {
     if(socket_)
     {
         QJsonObject object;
         object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerData)));
-        object.insert("Name", QJsonValue(name_));
+        object.insert("Name", QJsonValue(name));
         object.insert("Type", QJsonValue(static_cast<int>(DataType::Sound)));
         object.insert("Data", QJsonValue(QString(data)));
         QJsonDocument doc(object);

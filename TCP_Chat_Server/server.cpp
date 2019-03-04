@@ -179,6 +179,30 @@ void Server::disconnected(std::shared_ptr<Client> client)
 
 void Server::resolveData()
 {
+    // TODO:
+    // TL:DR
+    // Each client needs to finish receiving its data with its own ReadyRead before passing it on to be handled,
+    // because as it stands each client just passes on its data immidieatly.
+
+    // If the packet is too big the whole packet won't come at once.
+    // This is currently being handled, but in a too naive way.
+    // The problem arises when several clients passes on its data before
+    // this next part can finish creating the ongoing JSON document.
+    // The current implementation assumes that all incoming data is part of the JSON document that is currently
+    // under construction, and will continue to append its data to the bytearray until it is a
+    // completed JSON document. So if some other data comes inbetween that is not a part of the current JSON document in construction,
+    // the freeze occurs and no further data will be sent, because it will append the wrong data and try to finish the current JSON document forver.
+    // This is impossible to fix in the current implementation, because there is no way to differ the data if there is not enough data in the first place to complete the JSON document.
+
+    // So remove this next part, and let the individual clients have it's own ReadyRead.
+    // When they have individually successfully completed a JSON document, pass it on to be sent to other clients.
+    // The only problem left then is that a person can't send a picture while talking,
+    // because that readyRead can't differ the data and the bug will return.
+    // All other problems *should* be solved.
+
+
+
+
     // No point continuing if no new data
     if(!unresolvedData_.size()) { return; }
 
@@ -194,7 +218,6 @@ void Server::resolveData()
 
     // Check if it's good now
     if(currentDocumentResolving_.isNull()) { return; }
-
 
     // Check if it's a complete object
     if(currentDocumentResolving_.isObject())
@@ -386,7 +409,7 @@ void Server::handlePacket(std::shared_ptr<Client> client, const QJsonObject& obj
             for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
             {
                 if(connectedClient != client)
-                    connectedClient->sendSound(data);
+                    connectedClient->sendSound(client->getName(), data);
             }
             break;
         }
@@ -400,7 +423,7 @@ void Server::handlePacket(std::shared_ptr<Client> client, const QJsonObject& obj
                 for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
                 {
                     qDebug() << "Sending image";
-                    connectedClient->sendImage(data);
+                    connectedClient->sendImage(client->getName(), data);
                 }
             }
             break;
