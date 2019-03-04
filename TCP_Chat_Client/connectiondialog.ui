@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>505</width>
+    <width>512</width>
     <height>217</height>
    </rect>
   </property>
@@ -267,7 +267,10 @@ color: rgb(239,239,239);
 border: none;</string>
            </property>
            <property name="text">
-            <string>127.0.0.1</string>
+            <string>skau.hopto.org</string>
+           </property>
+           <property name="readOnly">
+            <bool>false</bool>
            </property>
            <property name="placeholderText">
             <string/>

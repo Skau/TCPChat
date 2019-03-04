@@ -33,7 +33,10 @@ void Server::startServer(const QHostAddress& address, const quint16& port)
     server_.setProxy(proxy);
 
     // Start listening for incoming connections
-    if(!server_.listen(address, port))
+
+    address.isNull(); // to stop complaining
+
+    if(!server_.listen(QHostAddress::AnyIPv4, port))
     {
         emit listenError();
     }

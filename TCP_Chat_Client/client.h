@@ -89,7 +89,7 @@ signals:
 
 private slots:
     void resolveData();
-    void connectToHost(const QString& name, const QHostAddress& ip, const quint16& port);
+    void connectToHost(const QString& name, const QString& host, const quint16& port);
     void hostFound();
     void connected();
     void disconnected();

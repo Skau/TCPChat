@@ -17,7 +17,7 @@ public:
     ~ConnectionDialog();
 
 signals:
-    void connectToServer(const QString& name, const QHostAddress& ip, const quint16& port);
+    void connectToServer(const QString& name, const QString& address, const quint16& port);
 
 public slots:
     void setStatus(const std::string& string);

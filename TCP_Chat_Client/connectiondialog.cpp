@@ -28,10 +28,10 @@ void ConnectionDialog::on_button_Connect_clicked()
 
     bool isNumber;
     auto port = ui->line_Port->text().toUShort(&isNumber);
-    QHostAddress address(ui->line_IP->text());
+    auto address = ui->line_IP->text();
     auto name = ui->line_Name->text();
 
-    if(port && isNumber && !address.isNull() && name.length())
+    if(port && isNumber && address.length() && name.length())
     {
         emit connectToServer(name, address, port);
     }

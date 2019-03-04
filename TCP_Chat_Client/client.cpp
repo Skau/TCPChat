@@ -88,10 +88,10 @@ Client::~Client()
     connectionDialog_.reset();
 }
 
-void Client::connectToHost(const QString& name, const QHostAddress &ip, const quint16 &port)
+void Client::connectToHost(const QString& name, const QString &host, const quint16 &port)
 {
     name_ = name;
-    socket_.connectToHost(ip, port);
+    socket_.connectToHost(host, port);
 
     emit setCurrentConnectionStatus("Connecting...");
 }
