@@ -19,12 +19,12 @@
 #include <QAudioOutput>
 
 
-Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), connectionDialog_(connectionDialog), isRecievingData_(false), isSendingVoice_(false), isReciveingVoice_(false)
+Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), connectionDialog_(connectionDialog), isResolvingData_(false), outputDevice_(nullptr), inputDevice_(nullptr)
 {
-    resolveDataTimer_.start(1);
+    resolveDataTimer_.start();
     connect(&resolveDataTimer_, &QTimer::timeout, this, &Client::resolveData);
 
-    writeDataTimer_.start(1);
+    writeDataTimer_.start();
     connect(&writeDataTimer_, &QTimer::timeout, this, &Client::write);
 
     connect(connectionDialog_.get(), &ConnectionDialog::connectToServer, this, &Client::connectToHost);
@@ -74,7 +74,7 @@ Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), con
     if (!info2.isFormatSupported(format2))
         format2 = info2.nearestFormat(format2);
 
-     qDebug() << info2.deviceName();
+    qDebug() << info2.deviceName();
 
     output_ = new QAudioOutput(QAudioDeviceInfo::defaultOutputDevice(), format2);
     output_->setBufferSize(16384);
@@ -109,8 +109,8 @@ void Client::connected()
     QJsonObject object;
     object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientConnected)));
     object.insert("Name", QJsonValue(name_));
-    QJsonDocument document(object);
 
+    QJsonDocument document(object);
     addWriteData(document.toJson());
 
     connectionDialog_->hide();
@@ -185,35 +185,15 @@ void Client::sendMessage(const QString &message)
 
 void Client::sendImage(QByteArray &data)
 {
-    data = data.toBase64();
+    qDebug() << "Size of data: " << data.size();
 
-    // Tell server that lots of data is incoming
     QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientMessageImage)));
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientData)));
     object.insert("ID", QJsonValue(ID_));
-    auto dataToSend = data.size();
-    qDebug() << "Data to send: " << dataToSend;
-    object.insert("Size", QJsonValue(dataToSend));
-    QJsonDocument document(object);
-    addWriteData(document.toJson());
+    object.insert("Size", QJsonValue(data.size()));
+    object.insert("Type", QJsonValue(static_cast<int>(DataType::Image)));
+    object.insert("Data", QJsonValue(QString(data.toBase64())));
 
-    addWriteData(data);
-}
-
-void Client::sendSound()
-{
-    QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientVoiceStart)));
-    object.insert("ID", QJsonValue(ID_));
-    QJsonDocument document(object);
-    addWriteData(document.toJson());
-}
-
-void Client::stopSound()
-{
-    QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientVoiceEnd)));
-    object.insert("ID", QJsonValue(ID_));
     QJsonDocument document(object);
     addWriteData(document.toJson());
 }
@@ -264,24 +244,11 @@ void Client::write()
 // From server
 void Client::readyRead()
 {
-    if(isReciveingVoice_)
-    {
-        qDebug() << "Receiving voice...";
-        if(device_)
-        {
-            auto readData = socket_.readAll();
-            device_->write(readData, readData.size());
-        }
-        return;
-    }
-
     auto readData = socket_.readAll();
     if(readData.isEmpty())
     {
         qDebug() << "Data empty";
     }
-
-
 
     unresolvedData_ += QString(readData).split('|', QString::SkipEmptyParts);
 }
@@ -289,33 +256,59 @@ void Client::readyRead()
 void Client::startVoice()
 {
     qDebug() << "Voice started";
-    isSendingVoice_ = true;
-
-    sendSound();
-
     if(input_)
     {
-        input_->start(&socket_);
+        qDebug() << "Start";
+        inputDevice_ = static_cast<QBuffer*>(input_->start());
+        connect(inputDevice_, &QIODevice::readyRead, this, &Client::sendBitsOfVoice);
     }
 }
 
 void Client::endVoice()
 {
     qDebug() << "Voice ended";
-
-    stopSound();
-
     if(input_)
     {
         input_->stop();
     }
-    isSendingVoice_ = false;
+}
+
+void Client::sendBitsOfVoice()
+{
+    if(inputDevice_)
+    {
+        auto data = inputDevice_->readAll();
+        if(data.size())
+        {
+            qDebug() << "Sending " << data.size() << " bytes of data";
+            QJsonObject object;
+            object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientData)));
+            object.insert("ID", QJsonValue(ID_));
+            object.insert("Type", QJsonValue(static_cast<int>(DataType::Sound)));
+            object.insert("Data", QJsonValue(QString(data.toBase64())));
+
+            QJsonDocument doc(object);
+            addWriteData(doc.toJson());
+
+            if(doc.isNull())
+            {
+                qDebug() << "Null";
+            }
+        }
+        else
+        {
+            qDebug() << "No data read";
+        }
+
+
+    }
 }
 
 void Client::resolveData()
 {
-    if(unresolvedData_.size())
+    if(unresolvedData_.size() && !isResolvingData_)
     {
+        isResolvingData_ = true;
         auto data = unresolvedData_.takeFirst().toUtf8();
 
         if(!data.isEmpty())
@@ -323,147 +316,122 @@ void Client::resolveData()
             QJsonParseError error;
             QJsonDocument document = QJsonDocument::fromJson(data, &error);
 
-            if(!document.isNull())
+            while(document.isNull() && unresolvedData_.size())
+            {
+                qDebug() << "Null";
+                data += unresolvedData_.takeFirst().toUtf8();
+                document = QJsonDocument::fromJson(data, &error);
+            }
+
+            if(document.isObject())
             {
                 qDebug() << "JSON doc: " << document;
 
-                if(document.isObject())
+                auto object = document.object();
+                if(!object.isEmpty())
                 {
-                    auto object = document.object();
-                    if(!object.isEmpty())
+                    auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
+
+                    switch (contentType)
                     {
-                        auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
-
-                        switch (contentType)
-                        {
-                        case Contents::ServerConnected:
-                        {
-                            auto ID = object.find("ID").value().toInt();
-                            qDebug() << "ID: " << ID;
-                            ID_ = ID;
-                            break;
-                        }
-                        case Contents::ServerJoinRoom:
-                        {
-                            auto roomName = object.find("RoomName").value().toString();
-                            qDebug() << "Server told me to join room " <<  roomName;
-                            emit joinedRoom(roomName);
-                            break;
-                        }
-                        case Contents::ServerMessage:
-                        {
-                            auto message = object.find("Message").value().toString();
-                            emit addMessage(message);
-                            break;
-                        }
-                        case Contents::ServerMessageImage:
-                        {
-                            isRecievingData_ = true;
-
-                            nameOfSender_ = object.find("Name").value().toString();
-                            qDebug() << "Receving image from " << nameOfSender_;
-
-                            auto size = object.find("Size").value().toInt();
-                            dataSize_ = size;
-                            qDebug() << "Size: " << size;
-
-                            if(data_.size())
-                            {
-                                data_.clear();
-                            }
-                            data_.reserve(size);
-
-                            break;
-                        }
-                        case Contents::ServerClientNames:
-                        {
-                            mainWindow_->clearClientNames();
-                            auto names = object.find("Names")->toArray();
-                            std::vector<QString> clientNames;
-                            for(auto nameElement : names)
-                            {
-                                auto nameObj = nameElement.toObject();
-                                auto n = nameObj.find("Name");
-                                clientNames.push_back(n.value().toString());
-                            }
-                            emit addClients(clientNames);
-                            break;
-                        }
-                        case Contents::ServerNewRoom:
-                        {
-                            auto roomName = object.find("RoomName").value().toString();
-                            emit addNewRoom(roomName);
-                            break;
-                        }
-                        case Contents::ServerVoiceStart:
-                        {
-                            isReciveingVoice_ = true;
-                            if(output_)
-                            {
-                                device_ = output_->start();
-                            }
-                            else
-                            {
-                                qDebug() << "No voice output";
-                                return;
-                            }
-
-                            qDebug() << "Start receving voice";
-                            break;
-                        }
-                        case Contents::ServerVoiceEnd:
-                        {
-                            isReciveingVoice_ = false;
-                            if(output_)
-                            {
-                                output_->stop();
-                            }
-
-                            qDebug() << "Stop receiving voice";
-                            break;
-                        }
-                        default:
-                        {
-                            break;
-                        }
-                        }
+                    case Contents::ServerConnected:
+                    {
+                        auto ID = object.find("ID").value().toInt();
+                        qDebug() << "ID: " << ID;
+                        ID_ = ID;
+                        break;
                     }
-                    else
+                    case Contents::ServerJoinRoom:
                     {
-                        qDebug() << "[Ready Read] JSON object is empty";
+                        auto roomName = object.find("RoomName").value().toString();
+                        qDebug() << "Server told me to join room " <<  roomName;
+                        emit joinedRoom(roomName);
+                        break;
+                    }
+                    case Contents::ServerMessage:
+                    {
+                        auto message = object.find("Message").value().toString();
+                        emit addMessage(message);
+                        break;
+                    }
+                    case Contents::ServerClientNames:
+                    {
+                        mainWindow_->clearClientNames();
+                        auto names = object.find("Names")->toArray();
+                        std::vector<QString> clientNames;
+                        for(auto nameElement : names)
+                        {
+                            auto nameObj = nameElement.toObject();
+                            auto n = nameObj.find("Name");
+                            clientNames.push_back(n.value().toString());
+                        }
+                        emit addClients(clientNames);
+                        break;
+                    }
+                    case Contents::ServerNewRoom:
+                    {
+                        auto roomName = object.find("RoomName").value().toString();
+                        emit addNewRoom(roomName);
+                        break;
+                    }
+                    case Contents::ServerData:
+                    {
+                        auto type = static_cast<DataType>(object.find("Type").value().toInt());
+                        auto data = object.find("Data").value().toString().toUtf8();
+
+                        switch (type)
+                        {
+                        case DataType::Sound:
+                        {
+                            qDebug() << "It's sound";
+                            if(!outputDevice_)
+                            {
+                                outputDevice_ = output_->start();
+                            }
+
+                            data = QByteArray::fromBase64(data);
+                            outputDevice_->write(data, data.size());
+                            break;
+                        }
+                        case DataType::Image:
+                        {
+                            qDebug() << "It's an image";
+                            auto size = object.find("Size").value().toInt();
+                            auto name = object.find("Name").value().toString();
+                            qDebug() << "Recieved " << data.size() << "/" << size << " bytes";
+                            if(data.size() >= size)
+                            {
+                                qDebug() << "Download finished";
+                                std::shared_ptr<QImage> image = std::make_shared<QImage>();
+                                image->loadFromData(QByteArray::fromBase64(data));
+                                emit addImage(name, image);
+                            }
+                            break;
+                        }
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        break;
+                    }
                     }
                 }
                 else
                 {
-                    qDebug() << "[Ready Read] JSON document is not an object";
+                    qDebug() << "[Ready Read] JSON object is empty";
                 }
             }
             else
             {
-                if(isRecievingData_ && !isReciveingVoice_)
-                {
-                    data_.append(data);
-                    qDebug() << "Recieved " << data_.size() << "/" << dataSize_ << " bytes";
-                    if(data_.size() >= dataSize_)
-                    {
-                        qDebug() << "Download finished";
-                        isRecievingData_ = false;
-
-                        std::shared_ptr<QImage> image = std::make_shared<QImage>();
-                        image->loadFromData(QByteArray::fromBase64(data_));
-                        emit addImage(nameOfSender_, image);
-                    }
-                }
-                else
-                {
-                    qDebug() << "[Ready Read] JSON doc is null: " + error.errorString();
-                }
+                qDebug() << "[Ready Read] JSON document is not an object";
             }
         }
         else
         {
             qDebug() << "[Ready Read] Empty string";
         }
+        isResolvingData_ = false;
     }
 }
 

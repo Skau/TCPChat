@@ -7,7 +7,7 @@
 #include <QBuffer>
 
 MainWindow::MainWindow(const QString &name, QWidget *parent) :
-    QMainWindow(parent), ui(new Ui::MainWindow), name_(name)
+    QMainWindow(parent), ui(new Ui::MainWindow), name_(name), toggledVoice_(false)
 {
     ui->setupUi(this);
 
@@ -145,16 +145,21 @@ void MainWindow::on_button_sendImage_clicked()
     file.open(QIODevice::ReadOnly);
     QByteArray imageData = file.readAll();
     emit sendImage(imageData);
-//    std::shared_ptr<QImage> image = std::make_shared<QImage>(path);
-//    addImage(name_, image);
 }
 
-void MainWindow::on_button_Voice_pressed()
-{
-    emit startVoice();
-}
 
-void MainWindow::on_button_Voice_released()
+void MainWindow::on_button_Voice_clicked()
 {
-    emit endVoice();
+    toggledVoice_ = !toggledVoice_;
+
+    if(toggledVoice_)
+    {
+        ui->button_Voice->setText("Toggle voice (enabled)");
+        emit startVoice();
+    }
+    else
+    {
+        ui->button_Voice->setText("Toggle voice (disabled)");
+        emit endVoice();
+    }
 }

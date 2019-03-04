@@ -43,11 +43,9 @@ public:
     void removeRoom(std::shared_ptr<ChatRoom> room);
 
     void sendMessage(const QString& message);
-    void sendImage(const QString &name, QByteArray &data);
-    void startVoice();
-    void stopVoice();
+    void sendImage(QByteArray &data);
 
-    void forceWrite(const QByteArray& data);
+    void sendSound(QByteArray &data);
 
     QByteArray read();
 

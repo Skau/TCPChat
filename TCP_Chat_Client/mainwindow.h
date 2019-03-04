@@ -15,6 +15,8 @@ class MainWindow : public QMainWindow
 private:
     Ui::MainWindow *ui;
     QString name_;
+    int selectedName_;
+    bool toggledVoice_;
 
 public:
     explicit MainWindow(const QString& name, QWidget *parent = nullptr);
@@ -48,17 +50,10 @@ private slots:
     void on_button_LeaveRoom_clicked();
     void showCustomContextMenu(const QPoint &pos);
     void sendPMTrigger();
-
     void on_list_Rooms_doubleClicked(const QModelIndex &index);
-
     void on_button_sendImage_clicked();
+    void on_button_Voice_clicked();
 
-    void on_button_Voice_pressed();
-
-    void on_button_Voice_released();
-
-private:
-    int selectedName_;
 };
 
 #endif // MAINWINDOW_H

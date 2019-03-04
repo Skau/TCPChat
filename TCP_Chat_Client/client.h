@@ -13,17 +13,14 @@ class MainWindow;
 class ConnectionDialog;
 class QAudioInput;
 class QAudioOutput;
+class QBuffer;
 
 enum class Contents
 {
     ClientMessage,
     ServerMessage,
-    ClientMessageImage,
-    ServerMessageImage,
-    ClientVoiceStart,
-    ServerVoiceStart,
-    ClientVoiceEnd,
-    ServerVoiceEnd,
+    ClientData,
+    ServerData,
     ClientConnected,
     ServerConnected,
     ClientNewRoom,
@@ -45,7 +42,8 @@ enum class RoomType
 
 enum class DataType
 {
-    Image
+    Image,
+    Sound
 };
 
 class Client : public QObject
@@ -61,14 +59,12 @@ private:
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
 
+    bool isResolvingData_;
+
     QAudioInput* input_;
     QAudioOutput* output_;
-    QIODevice* device_;
-
-    bool isRecievingData_, isSendingVoice_, isReciveingVoice_;
-    QByteArray data_;
-    QString nameOfSender_;
-    int dataSize_;
+    QIODevice* outputDevice_;
+    QBuffer* inputDevice_;
 
     QTimer resolveDataTimer_;
     QTimer writeDataTimer_;
@@ -79,8 +75,6 @@ public:
 
 private:
     void addWriteData(const QByteArray& data) { writeData_.push(data); }
-    void sendSound();
-    void stopSound();
 
 signals:
     void addMessage(const QString& message);
@@ -105,6 +99,7 @@ private slots:
     void readyRead();
     void startVoice();
     void endVoice();
+    void sendBitsOfVoice();
 };
 
 #endif // CLIENT_H

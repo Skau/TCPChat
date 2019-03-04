@@ -14,12 +14,8 @@ enum class Contents
 {
     ClientMessage,
     ServerMessage,
-    ClientMessageImage,
-    ServerMessageImage,
-    ClientVoiceStart,
-    ServerVoiceStart,
-    ClientVoiceEnd,
-    ServerVoiceEnd,
+    ClientData,
+    ServerData,
     ClientConnected,
     ServerConnected,
     ClientNewRoom,
@@ -41,7 +37,8 @@ enum class RoomType
 
 enum class DataType
 {
-    Image
+    Image,
+    Sound
 };
 
 struct ChatRoom
@@ -91,13 +88,7 @@ private:
     QTcpServer server_;
 
     QStringList unresolvedData_;
-
-    bool isReceivingData_, isReceivingVoice_;
-    std::shared_ptr<Client> clientReceving_;
-    std::vector<std::shared_ptr<Client>> clientsReceiving_;
-    QByteArray data_;
-    int dataSize_;
-
+    bool isResolvingData_;
     QTimer timer_;
 
 public:

@@ -147,7 +147,7 @@ border-color:rgb(85,85,85);</string>
         <item>
          <widget class="QPushButton" name="button_Voice">
           <property name="text">
-           <string>Voice</string>
+           <string>Toggle voice (disabled)</string>
           </property>
          </widget>
         </item>

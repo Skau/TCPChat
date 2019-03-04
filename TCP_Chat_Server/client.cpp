@@ -11,7 +11,7 @@ Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(i
     connect(socket, &QTcpSocket::disconnected, this, &Client::disconnected);
     connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
 
-    timer_.start(2);
+    timer_.start();
     connect(&timer_, &QTimer::timeout, this, &Client::write);
 }
 
@@ -72,43 +72,31 @@ void Client::sendMessage(const QString& message)
     addJsonDocument(document.toJson());
 }
 
-void Client::sendImage(const QString& name, QByteArray& data)
+void Client::sendImage(QByteArray& data)
 {
-    QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerMessageImage)));
-    object.insert("Name", QJsonValue(name));
-    auto dataToSend = data.size();
-    object.insert("Size", QJsonValue(dataToSend));
-    QJsonDocument document(object);
-    qDebug() << document;
-    addJsonDocument(document.toJson());
+    qDebug() << "Size of data: " << data.size();
 
-    addJsonDocument(data);
-}
-
-void Client::startVoice()
-{
     QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerVoiceStart)));
+    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerData)));
+    object.insert("Name", QJsonValue(name_));
+    object.insert("Size", QJsonValue(data.size()));
+    object.insert("Type", QJsonValue(static_cast<int>(DataType::Image)));
+    object.insert("Data", QJsonValue(QString(data)));
     QJsonDocument document(object);
     qDebug() << document;
     addJsonDocument(document.toJson());
 }
 
-void Client::stopVoice()
-{
-    QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerVoiceEnd)));
-    QJsonDocument document(object);
-    qDebug() << document;
-    addJsonDocument(document.toJson());
-}
-
-void Client::forceWrite(const QByteArray &data)
+void Client::sendSound(QByteArray &data)
 {
     if(socket_)
     {
-        socket_->write(data);
+        QJsonObject object;
+        object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerData)));
+        object.insert("Type", QJsonValue(static_cast<int>(DataType::Sound)));
+        object.insert("Data", QJsonValue(QString(data)));
+        QJsonDocument doc(object);
+        addJsonDocument(doc.toJson());
     }
 }
 
@@ -126,7 +114,13 @@ QByteArray Client::read()
 {
     if(socket_)
     {
-        return socket_->readAll();
+        QByteArray array;
+        while(socket_->bytesAvailable() > 0)
+        {
+
+            array += socket_->readAll();
+        }
+        return array;
     }
     else
     {
