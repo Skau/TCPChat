@@ -12,18 +12,17 @@
 VoiceManager::VoiceManager(const int& ID, const QString &host, const quint16 &port)
     : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(QHostAddress(host)), port_(port)
 {
-    voiceSocket_ = new QUdpSocket(this);
-    if(!voiceSocket_->bind(host_, port_))
+    socket_ = new QUdpSocket(this);
+    if(!socket_->bind(host_, port_, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint))
     {
         qDebug() << "failed to bind";
     }
 
-    connect(voiceSocket_, &QUdpSocket::readyRead, this, &VoiceManager::readVoiceData);
+    connect(socket_, &QUdpSocket::readyRead, this, &VoiceManager::readVoiceData);
 
     if(setupAudio())
         voiceReady_ = true;
 }
-
 
 bool VoiceManager::setupAudio()
 {
@@ -44,8 +43,8 @@ bool VoiceManager::setupAudio()
     }
 
     QAudioFormat format;
-    format.setSampleRate(44100);
-    format.setChannelCount(2);
+    format.setSampleRate(64000);
+    format.setChannelCount(1);
     format.setSampleSize(16);
     format.setCodec("audio/pcm");
     format.setByteOrder(QAudioFormat::LittleEndian);
@@ -62,8 +61,8 @@ bool VoiceManager::setupAudio()
     input_->setBufferSize(16384);
 
     QAudioFormat format2;
-    format2.setSampleRate(44100);
-    format2.setChannelCount(2);
+    format2.setSampleRate(64000);
+    format2.setChannelCount(1);
     format2.setSampleSize(16);
     format2.setCodec("audio/pcm");
     format2.setByteOrder(QAudioFormat::LittleEndian);
@@ -130,8 +129,7 @@ void VoiceManager::sendBitsOfVoice()
         data.append(inputDevice_->readAll());
         if(data.size() > static_cast<int>(sizeof(ID_)))
         {
-            qDebug() << "Data send size: " << data.size();
-            voiceSocket_->writeDatagram(data, data.size(), host_, port_);
+            socket_->writeDatagram(data, data.size(), host_.Broadcast, port_);
         }
     }
 }
@@ -157,19 +155,17 @@ void VoiceManager::readVoiceData()
         qDebug() << "Voice not ready";
     }
 
-    while(voiceSocket_->hasPendingDatagrams())
+    while(socket_->hasPendingDatagrams())
     {
         QByteArray data;
-        data.resize(static_cast<int>(voiceSocket_->pendingDatagramSize()));
-        voiceSocket_->readDatagram(data.data(), data.size());
-        qDebug() << "Data receive size: " << data.size();
+        data.resize(static_cast<int>(socket_->pendingDatagramSize()));
+        socket_->readDatagram(data.data(), data.size());
         if(data.size())
         {
             int id = -1;
             QDataStream stream(&data, QIODevice::ReadOnly);
             stream >> id;
             data.remove(0, sizeof(ID_));
-            qDebug() << id;
             if(id != ID_)
                 outputDevice_->write(data, data.size());
         }

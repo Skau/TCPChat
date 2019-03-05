@@ -21,7 +21,8 @@ private:
     QAudioOutput* output_;
     QIODevice* outputDevice_;
     QBuffer* inputDevice_;
-    QUdpSocket* voiceSocket_;
+    QUdpSocket* socket_;
+    QUdpSocket* socketReceiver_;
     QHostAddress host_;
     quint16 port_;
 
