@@ -27,13 +27,15 @@ CONFIG += c++17
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    server.cpp \
-    client.cpp
+    client.cpp \
+    application.cpp \
+    voicemanager.cpp
 
 HEADERS += \
         mainwindow.h \
-    server.h \
-    client.h
+    client.h \
+    application.h \
+    voicemanager.h
 
 FORMS += \
         mainwindow.ui

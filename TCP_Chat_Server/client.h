@@ -18,10 +18,8 @@ private:
     qint16 id_;
     QString name_;
     QTcpSocket* socket_;
-    std::shared_ptr<QTcpSocket> voiceSocket_;
     std::shared_ptr<ChatRoom> currentRoom_;
     std::vector<std::shared_ptr<ChatRoom>> allRooms_;
-    std::vector<std::shared_ptr<QTcpSocket>> voiceConnections_;
 
     bool isSendingData_;
     std::queue<QByteArray> documents_;
@@ -42,10 +40,7 @@ public:
     std::shared_ptr<ChatRoom> getCurrentRoom() { return currentRoom_; }
     void joinRoom(std::shared_ptr<ChatRoom> room);
 
-    void setVoiceSocket(std::shared_ptr<QTcpSocket> socket);
-    void addVoiceSocket(std::shared_ptr<QTcpSocket> socket) { voiceConnections_.push_back(socket); }
-
-    QTcpSocket* getSocket() { return socket_; }
+    QTcpSocket* getRegularSocket() { return socket_; }
 
     void sendID();
 
@@ -67,7 +62,6 @@ public slots:
 
 private slots:
     void readData();
-    void readVoiceData();
     void write();
     void resolveData();
 

@@ -1,5 +1,5 @@
 #include "client.h"
-#include "server.h"
+#include "application.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -24,7 +24,6 @@ Client::~Client()
     if(socket_)
     {
         socket_->disconnectFromHost();
-        voiceSocket_->disconnectFromHost();
     }
 }
 
@@ -45,21 +44,6 @@ void Client::joinRoom(std::shared_ptr<ChatRoom> room)
     object.insert("RoomName", QJsonValue(room->name));
     QJsonDocument document(object);
     addJsonDocument(document.toJson());
-}
-
-void Client::setVoiceSocket(std::shared_ptr<QTcpSocket> socket)
-{
-    if(!socket.get())
-    {
-        qDebug() << "Incoming voice socket is wrong";
-        return;
-    }
-
-    qDebug() << "Setting voice socket";
-    voiceSocket_ = socket;
-    connect(voiceSocket_.get(), &QTcpSocket::readyRead, this, &Client::readVoiceData);
-    connect(voiceSocket_.get(), &QTcpSocket::disconnected, voiceSocket_.get(), &QTcpSocket::deleteLater);
-
 }
 
 void Client::sendID()
@@ -136,23 +120,6 @@ void Client::readData()
     }
 
     unresolvedData_.append(QString(array).split('|', QString::SkipEmptyParts));
-}
-
-void Client::readVoiceData()
-{
-    if(voiceSocket_.get())
-    {
-        auto data = voiceSocket_->readAll();
-
-        if(data.size())
-        {
-            qDebug() << "voice data size: " << data.size();
-            for(auto& socket : voiceConnections_)
-            {
-                socket->write(data, data.size());
-            }
-        }
-    }
 }
 
 void Client::resolveData()

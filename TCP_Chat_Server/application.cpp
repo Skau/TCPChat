@@ -1,4 +1,4 @@
-#include "server.h"
+#include "application.h"
 #include <QDebug>
 #include <QNetworkProxy>
 #include <QJsonArray>
@@ -6,33 +6,40 @@
 #include <string>
 #include <QBuffer>
 #include <QImageReader>
+#include <QTcpServer>
+#include "voicemanager.h"
+#include <QThread>
 
-Server::Server() : idCounterClient_(0)
+Application::Application() : idCounterClient_(0)
 {
-    connect(&server_, &QTcpServer::newConnection, this, &Server::newConnection);
-    connect(&server_, &QTcpServer::acceptError, this, &Server::acceptError);
+    server_ = std::make_unique<QTcpServer>(this);
+    connect(server_.get(), &QTcpServer::newConnection, this, &Application::newConnection);
+    connect(server_.get(), &QTcpServer::acceptError, this, &Application::acceptError);
 
-    connect(&timer_, &QTimer::timeout, this, &Server::handlePacket);
+    connect(&timer_, &QTimer::timeout, this, &Application::handlePacket);
     timer_.start(1);
+
+    voiceManager_ = std::make_unique<VoiceManager>();
+    connect(this, &Application::addVoiceSocket, voiceManager_.get(), &VoiceManager::addSocket, Qt::QueuedConnection);
 }
 
-Server::~Server()
+Application::~Application()
 {
     exit(0);
 }
 
 // Slot
-void Server::startServer(const quint16& port)
+void Application::startServer(const quint16& port)
 {
     qDebug() << "Start server";
 
     QNetworkProxy proxy;
     proxy.setType(QNetworkProxy::ProxyType::DefaultProxy);
     proxy.setPort(port);
-    server_.setProxy(proxy);
+    server_->setProxy(proxy);
 
     // Start listening for incoming connections
-    if(!server_.listen(QHostAddress::AnyIPv4, port))
+    if(!server_->listen(QHostAddress::AnyIPv4, port))
     {
         emit listenError();
     }
@@ -42,11 +49,11 @@ void Server::startServer(const quint16& port)
 }
 
 // Slot
-void Server::stopServer()
+void Application::stopServer()
 {
-    if(server_.isListening())
+    if(server_->isListening())
     {
-        server_.close();
+        server_->close();
     }
 
     removeClients();
@@ -56,10 +63,16 @@ void Server::stopServer()
 }
 
 // Slot
-void Server::newConnection()
+void Application::newConnection()
 {
     // Get next pending client
-    auto socket = server_.nextPendingConnection();
+    auto socket = server_->nextPendingConnection();
+
+    if(!socket)
+    {
+        qDebug() << "Broken socket";
+        return;
+    }
     qDebug() << "New connection from " << socket->peerAddress().toString();
 
     socket->waitForReadyRead(); // Blocking
@@ -94,8 +107,8 @@ void Server::newConnection()
                         // Create and setup new client
                         ++idCounterClient_;
                         auto client = std::make_shared<Client>(idCounterClient_, name, socket);
-                        connect(client.get(), &Client::packetReady, this, &Server::addPacket);
-                        connect(client.get(), &Client::clientDisconnected, this, &Server::disconnected);
+                        connect(client.get(), &Client::packetReady, this, &Application::addPacket);
+                        connect(client.get(), &Client::clientDisconnected, this, &Application::disconnected);
 
                         // Add client
                         clients_.push_back(client);
@@ -111,39 +124,36 @@ void Server::newConnection()
                     }
                     else
                     {
-                        auto id = object.find("ID").value().toInt();
-                        qDebug() << "ID: " << id;
-                        if(id > -1)
-                        {
-                            std::shared_ptr<Client> connectedClient;
-                            for(auto& c : clients_)
-                            {
-                                if(c->getID() == id)
-                                {
-                                    connectedClient = c;
-                                    break;
-                                }
-                            }
+                        emit addVoiceSocket(socket);
 
-                            if(connectedClient.get())
-                            {
-                                qDebug() << "Server setting voice socket";
-                                connectedClient->setVoiceSocket(std::shared_ptr<QTcpSocket>(socket));
+//                        // Find ID of voice socket owner
+//                        auto id = object.find("ID").value().toInt();
+//                        if(id > -1)
+//                        {
+//                            // Find the client
+//                            for(auto& client : clients_)
+//                            {
+//                                if(client->getID() == id)
+//                                {
+//                                    client->setVoiceSocket(std::shared_ptr<QTcpSocket>(socket));
 
-                                for(auto& c  : clients_)
-                                {
-                                    if(c->getID() != connectedClient->getID())
-                                    {
-                                        c->addVoiceSocket(std::shared_ptr<QTcpSocket>(socket));
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                qDebug() << "Could not find client";
-                            }
-                        }
+//                                    for(auto& c  : clients_)
+//                                    {
+//                                        if(c->getID() != id)
+//                                        {
+//                                            c->addVoiceSocket(std::shared_ptr<QTcpSocket>(socket));
+//                                            client->addVoiceSocket(c->getVoiceSocket());
+//                                        }
+//                                    }
+//                                }
+//                            }
 
+//                            qDebug() << "Could not find client";
+//                        }
+//                        else
+//                        {
+//                            qDebug() << "ID not initialized";
+//                        }
                     }
                 }
             }
@@ -164,13 +174,13 @@ void Server::newConnection()
 }
 
 // Slot
-void Server::acceptError(QAbstractSocket::SocketError socketError) const
+void Application::acceptError(QAbstractSocket::SocketError socketError) const
 {
     qDebug() << "Accept error: " << socketError;
     emit acceptClientError(socketError);
 }
 
-std::shared_ptr<ChatRoom> Server::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client>>& allowedClients, const std::vector<std::shared_ptr<Client>> &clients)
+std::shared_ptr<ChatRoom> Application::createRoom(const QString &name, const RoomType &type, const std::vector<std::shared_ptr<Client>>& allowedClients, const std::vector<std::shared_ptr<Client>> &clients)
 {
     rooms_.emplace_back(std::make_shared<ChatRoom>(rooms_.size(), name, type, allowedClients, clients));
     emit addRoom(name + " [" + QString::number(clients.size()) + "]");
@@ -179,21 +189,21 @@ std::shared_ptr<ChatRoom> Server::createRoom(const QString &name, const RoomType
 }
 
 // Slot
-void Server::selectedRoom(const int &index)
+void Application::selectedRoom(const int &index)
 {
     auto room = rooms_[static_cast<unsigned int>(index)];
 
     emit addClientNames(room);
 }
 
-void Server::addPacket(std::shared_ptr<Client> client, const QJsonObject &object)
+void Application::addPacket(std::shared_ptr<Client> client, const QJsonObject &object)
 {
-    packets_.emplace(Packet{client, object});
+    packetsReady_.emplace(Packet{client, object});
 }
 
-void Server::disconnected(std::shared_ptr<Client> client)
+void Application::disconnected(std::shared_ptr<Client> client)
 {
-    if(client.get() && server_.isListening())
+    if(client.get() && server_->isListening())
     {
         qDebug() << client->getName() << " disconnected";
         emit clientDisconnected(client);
@@ -211,7 +221,7 @@ void Server::disconnected(std::shared_ptr<Client> client)
     }
 }
 
-void Server::removeClients()
+void Application::removeClients()
 {
     for(auto& client : clients_)
     {
@@ -220,7 +230,7 @@ void Server::removeClients()
     clients_.clear();
 }
 
-void Server::removeRooms()
+void Application::removeRooms()
 {
     for(auto& room : rooms_)
     {
@@ -231,7 +241,7 @@ void Server::removeRooms()
 
 }
 
-int Server::getRoomIndex(std::shared_ptr<ChatRoom> room)
+int Application::getRoomIndex(std::shared_ptr<ChatRoom> room)
 {
     for(unsigned int i = 0; i < rooms_.size(); ++i)
     {
@@ -244,7 +254,7 @@ int Server::getRoomIndex(std::shared_ptr<ChatRoom> room)
     return -1;
 }
 
-void Server::updateClientNames(std::shared_ptr<ChatRoom> room)
+void Application::updateClientNames(std::shared_ptr<ChatRoom> room)
 {
     if(room->connectedClients.size())
     {
@@ -269,14 +279,14 @@ void Server::updateClientNames(std::shared_ptr<ChatRoom> room)
     }
 }
 
-void Server::handlePacket()
+void Application::handlePacket()
 {
-    if(!packets_.size()) { return; }
+    if(!packetsReady_.size()) { return; }
 
-    auto packet = packets_.front();
+    auto packet = packetsReady_.front();
     auto client = packet.client;
     auto object = packet.object;
-    packets_.pop();
+    packetsReady_.pop();
 
     auto contentType = static_cast<Contents>(object.find("Contents").value().toInt());
 
@@ -377,7 +387,7 @@ void Server::handlePacket()
     }
 }
 
-std::shared_ptr<ChatRoom> Server::tryToCreatePrivateRoom(std::shared_ptr<Client> client1, std::shared_ptr<Client> client2)
+std::shared_ptr<ChatRoom> Application::tryToCreatePrivateRoom(std::shared_ptr<Client> client1, std::shared_ptr<Client> client2)
 {
     std::shared_ptr<ChatRoom> roomToReturn;
 
@@ -420,7 +430,7 @@ std::shared_ptr<ChatRoom> Server::tryToCreatePrivateRoom(std::shared_ptr<Client>
     return roomToReturn;
 }
 
-std::shared_ptr<ChatRoom> Server::createPublicRoom(const QString &name)
+std::shared_ptr<ChatRoom> Application::createPublicRoom(const QString &name)
 {
     auto room = createRoom(name, RoomType::Public);
 

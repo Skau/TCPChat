@@ -1,8 +1,7 @@
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef APPLICATION_H
+#define APPLICATION_H
 
 #include <QObject>
-#include <QTcpServer>
 #include <QTcpSocket>
 #include <vector>
 #include <memory>
@@ -11,7 +10,9 @@
 #include <QJsonObject>
 #include <queue>
 
+class QTcpServer;
 class Client;
+class VoiceManager;
 
 enum class Contents
 {
@@ -85,7 +86,7 @@ struct Packet
     QJsonObject object;
 };
 
-class Server : public QObject
+class Application : public QObject
 {
     Q_OBJECT
 
@@ -93,14 +94,15 @@ private:
     quint16 idCounterClient_;
     std::vector<std::shared_ptr<Client>> clients_;
     std::vector<std::shared_ptr<ChatRoom>> rooms_;
-    std::queue<Packet> packets_;
-    QTcpServer server_;
+    std::queue<Packet> packetsReady_;
+    std::unique_ptr<QTcpServer> server_;
+    std::unique_ptr<VoiceManager> voiceManager_;
 
     QTimer timer_;
 
 public:
-    Server();
-    ~Server();
+    Application();
+    ~Application();
 
 private:
     void removeClients();
@@ -119,6 +121,7 @@ signals:
     void addRoom(const QString& name);
     void addClientNames(std::shared_ptr<ChatRoom> room);
     void changeRoomName(const QString& newName, int index);
+    void addVoiceSocket(QTcpSocket* socket);
 
 public slots:
     void startServer(const quint16& port);
@@ -135,4 +138,4 @@ private slots:
 
 };
 
-#endif // SERVER_H
+#endif // APPLICATION_H

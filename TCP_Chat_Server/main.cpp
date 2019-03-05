@@ -1,25 +1,25 @@
 #include "mainwindow.h"
 #include <QApplication>
 
-#include "server.h"
+#include "application.h"
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
     MainWindow w;
-    Server s;
+    Application s;
 
-    QObject::connect(&w, &MainWindow::startServer, &s, &Server::startServer);
-    QObject::connect(&w, &MainWindow::stopServer, &s, &Server::stopServer);
-    QObject::connect(&s, &Server::newConnectionAdded, &w, &MainWindow::newConnectionAdded);
-    QObject::connect(&s, &Server::clientDisconnected, &w, &MainWindow::removeClientName);
-    QObject::connect(&s, &Server::acceptClientError, &w, &MainWindow::acceptError);
-    QObject::connect(&s, &Server::listenError, &w, &MainWindow::listenError);
-    QObject::connect(&s, &Server::addRoom, &w, &MainWindow::addRoom);
-    QObject::connect(&w, &MainWindow::selectedRoom, &s, &Server::selectedRoom);
-    QObject::connect(&s, &Server::addClientNames, &w, &MainWindow::addClientNames);
-    QObject::connect(&s, &Server::changeRoomName, &w, &MainWindow::changeRoomName);
+    QObject::connect(&w, &MainWindow::startServer, &s, &Application::startServer);
+    QObject::connect(&w, &MainWindow::stopServer, &s, &Application::stopServer);
+    QObject::connect(&s, &Application::newConnectionAdded, &w, &MainWindow::newConnectionAdded);
+    QObject::connect(&s, &Application::clientDisconnected, &w, &MainWindow::removeClientName);
+    QObject::connect(&s, &Application::acceptClientError, &w, &MainWindow::acceptError);
+    QObject::connect(&s, &Application::listenError, &w, &MainWindow::listenError);
+    QObject::connect(&s, &Application::addRoom, &w, &MainWindow::addRoom);
+    QObject::connect(&w, &MainWindow::selectedRoom, &s, &Application::selectedRoom);
+    QObject::connect(&s, &Application::addClientNames, &w, &MainWindow::addClientNames);
+    QObject::connect(&s, &Application::changeRoomName, &w, &MainWindow::changeRoomName);
 
     w.show();
 
