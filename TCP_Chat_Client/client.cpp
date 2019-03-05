@@ -29,7 +29,7 @@ Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), con
     connect(&socket_, &QTcpSocket::hostFound, this, &Client::hostFound);
     connect(&socket_, &QTcpSocket::connected, this, &Client::connected);
     connect(&socket_, &QTcpSocket::disconnected, this, &Client::disconnected);
-    connect(&socket_, &QTcpSocket::readyRead, this, &Client::connectionDataReady);
+    connect(&socket_, &QTcpSocket::readyRead, this, &Client::connectionDataReady);  
 }
 
 Client::~Client()
@@ -270,7 +270,6 @@ void Client::handlePacket(const QJsonObject &object)
 
         voiceManager_->moveToThread(&voiceThread_);
         connect(voiceManager_.get(), &VoiceManager::done, &voiceThread_, &QThread::quit);
-
         voiceThread_.start();
 
         break;

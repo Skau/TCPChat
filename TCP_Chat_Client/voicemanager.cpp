@@ -13,7 +13,7 @@ VoiceManager::VoiceManager(const int& ID, const QString &host, const quint16 &po
     : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(QHostAddress(host)), port_(port)
 {
     socket_ = new QUdpSocket(this);
-    if(!socket_->bind(host_, port_, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint))
+    if(!socket_->bind(QHostAddress::AnyIPv4, port_, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint))
     {
         qDebug() << "failed to bind";
     }
@@ -129,7 +129,7 @@ void VoiceManager::sendBitsOfVoice()
         data.append(inputDevice_->readAll());
         if(data.size() > static_cast<int>(sizeof(ID_)))
         {
-            socket_->writeDatagram(data, data.size(), host_.Broadcast, port_);
+            socket_->writeDatagram(data, data.size(), socket_->localAddress().Broadcast, port_);
         }
     }
 }
