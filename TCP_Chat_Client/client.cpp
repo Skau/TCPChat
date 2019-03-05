@@ -264,7 +264,6 @@ void Client::handlePacket(const QJsonObject &object)
         ID_ = ID;
 
         voiceManager_ = std::make_unique<VoiceManager>(ID_, host_, port_);
-        connect(&socket_, &QTcpSocket::disconnected,voiceManager_.get(), &VoiceManager::disconnected);
         connect(mainWindow_.get(), &MainWindow::startVoice,voiceManager_.get(), &VoiceManager::startVoice);
         connect(mainWindow_.get(), &MainWindow::endVoice,voiceManager_.get(), &VoiceManager::endVoice);
         connect(mainWindow_.get(), &MainWindow::setInputVolume,voiceManager_.get(), &VoiceManager::changeInputVolume);

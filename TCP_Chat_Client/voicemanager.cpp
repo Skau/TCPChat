@@ -1,5 +1,5 @@
 #include "voicemanager.h"
-#include <QTcpSocket>
+#include <QUdpSocket>
 #include <QAudioDeviceInfo>
 #include <QAudioInput>
 #include <QAudioOutput>
@@ -7,33 +7,23 @@
 #include <QJsonDocument>
 #include <QBuffer>
 #include "client.h"
+#include <QDataStream>
 
-VoiceManager::VoiceManager(const int& ID, const QString &host, const quint16 &port) : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr)
+VoiceManager::VoiceManager(const int& ID, const QString &host, const quint16 &port)
+    : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(QHostAddress(host)), port_(port)
 {
-    voiceSocket_ = new QTcpSocket(this);
-    connect(voiceSocket_, &QTcpSocket::connected, this, &VoiceManager::connected);
-    connect(voiceSocket_, &QTcpSocket::disconnected, this, &VoiceManager::disconnected);
-    connect(voiceSocket_, &QTcpSocket::readyRead, this, &VoiceManager::readVoiceData);
+    voiceSocket_ = new QUdpSocket(this);
+    if(!voiceSocket_->bind(host_, port_))
+    {
+        qDebug() << "failed to bind";
+    }
 
-    qDebug() << "Trying to connect voice";
-    voiceSocket_->connectToHost(host, port);
-}
-
-void VoiceManager::connected()
-{
-    qDebug() << "Voice connection established";
-    QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientConnected)));
-    object.insert("ID", QJsonValue(ID_));
-
-    QJsonDocument document(object);
-    voiceSocket_->write(document.toJson());
+    connect(voiceSocket_, &QUdpSocket::readyRead, this, &VoiceManager::readVoiceData);
 
     if(setupAudio())
-    {
         voiceReady_ = true;
-    }
 }
+
 
 bool VoiceManager::setupAudio()
 {
@@ -92,13 +82,6 @@ bool VoiceManager::setupAudio()
     return true;
 }
 
-void VoiceManager::disconnected()
-{
-    voiceSocket_->disconnectFromHost();
-    voiceReady_ = false;
-    emit done();
-}
-
 void VoiceManager::startVoice()
 {
     if(!voiceReady_)
@@ -128,6 +111,7 @@ void VoiceManager::endVoice()
     if(input_)
     {
         input_->stop();
+        inputDevice_->close();
     }
 }
 
@@ -140,10 +124,14 @@ void VoiceManager::sendBitsOfVoice()
 
     if(inputDevice_)
     {
-        auto data = inputDevice_->readAll();
-        if(data.size())
+        QByteArray data;
+        QDataStream stream(&data, QIODevice::WriteOnly);
+        stream << ID_;
+        data.append(inputDevice_->readAll());
+        if(data.size() > static_cast<int>(sizeof(ID_)))
         {
-            voiceSocket_->write(data, data.size());
+            qDebug() << "Data send size: " << data.size();
+            voiceSocket_->writeDatagram(data, data.size(), host_, port_);
         }
     }
 }
@@ -169,6 +157,21 @@ void VoiceManager::readVoiceData()
         qDebug() << "Voice not ready";
     }
 
-    auto data = voiceSocket_->readAll();
-    outputDevice_->write(data, data.size());
+    while(voiceSocket_->hasPendingDatagrams())
+    {
+        QByteArray data;
+        data.resize(static_cast<int>(voiceSocket_->pendingDatagramSize()));
+        voiceSocket_->readDatagram(data.data(), data.size());
+        qDebug() << "Data receive size: " << data.size();
+        if(data.size())
+        {
+            int id = -1;
+            QDataStream stream(&data, QIODevice::ReadOnly);
+            stream >> id;
+            data.remove(0, sizeof(ID_));
+            qDebug() << id;
+            if(id != ID_)
+                outputDevice_->write(data, data.size());
+        }
+    }
 }

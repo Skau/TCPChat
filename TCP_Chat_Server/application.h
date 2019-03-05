@@ -10,6 +10,7 @@
 #include <QJsonObject>
 #include <queue>
 
+class QUdpSocket;
 class QTcpServer;
 class Client;
 class VoiceManager;
@@ -121,7 +122,7 @@ signals:
     void addRoom(const QString& name);
     void addClientNames(std::shared_ptr<ChatRoom> room);
     void changeRoomName(const QString& newName, int index);
-    void addVoiceSocket(QTcpSocket* socket);
+    void addVoiceSocket(QUdpSocket* socket);
 
 public slots:
     void startServer(const quint16& port);

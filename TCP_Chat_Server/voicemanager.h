@@ -3,23 +3,22 @@
 
 #include <QObject>
 
-class QTcpSocket;
+class QUdpSocket;
 
 class VoiceManager : public QObject
 {
     Q_OBJECT
 
 private:
-    std::vector<QTcpSocket*> sockets_;
+    QUdpSocket* socket;
 
 public:
-    explicit VoiceManager(QObject* parent = nullptr);
+    explicit VoiceManager(QObject* parent = nullptr, const quint16& port = 0);
 
 private:
-    void writeData(QTcpSocket* owner, const QByteArray &data);
+    void writeData(QUdpSocket* owner, const QByteArray &data);
 
 public slots:
-    void addSocket(QTcpSocket* socket);
 
 private slots:
     void readData();

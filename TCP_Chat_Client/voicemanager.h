@@ -2,8 +2,9 @@
 #define VOICEMANAGER_H
 
 #include <QObject>
+#include <QHostAddress>
 
-class QTcpSocket;
+class QUdpSocket;
 class QAudioInput;
 class QAudioOutput;
 class QBuffer;
@@ -20,7 +21,9 @@ private:
     QAudioOutput* output_;
     QIODevice* outputDevice_;
     QBuffer* inputDevice_;
-    QTcpSocket* voiceSocket_;
+    QUdpSocket* voiceSocket_;
+    QHostAddress host_;
+    quint16 port_;
 
 public:
     VoiceManager(const int &ID, const QString& host, const quint16& port);
@@ -32,8 +35,6 @@ signals:
     void done();
 
 public slots:
-    void connected();
-    void disconnected();
     void startVoice();
     void endVoice();
     void sendBitsOfVoice();

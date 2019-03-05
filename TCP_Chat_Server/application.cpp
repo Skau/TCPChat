@@ -9,6 +9,7 @@
 #include <QTcpServer>
 #include "voicemanager.h"
 #include <QThread>
+#include <QUdpSocket>
 
 Application::Application() : idCounterClient_(0)
 {
@@ -20,7 +21,6 @@ Application::Application() : idCounterClient_(0)
     timer_.start(1);
 
     voiceManager_ = std::make_unique<VoiceManager>();
-    connect(this, &Application::addVoiceSocket, voiceManager_.get(), &VoiceManager::addSocket, Qt::QueuedConnection);
 }
 
 Application::~Application()
@@ -124,7 +124,6 @@ void Application::newConnection()
                     }
                     else
                     {
-                        emit addVoiceSocket(socket);
 
 //                        // Find ID of voice socket owner
 //                        auto id = object.find("ID").value().toInt();
