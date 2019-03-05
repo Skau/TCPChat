@@ -29,13 +29,15 @@ SOURCES += \
         mainwindow.cpp \
     client.cpp \
     connectiondialog.cpp \
-    inputfilter.cpp
+    inputfilter.cpp \
+    voicemanager.cpp
 
 HEADERS += \
         mainwindow.h \
     client.h \
     connectiondialog.h \
-    inputfilter.h
+    inputfilter.h \
+    voicemanager.h
 
 FORMS += \
         mainwindow.ui \

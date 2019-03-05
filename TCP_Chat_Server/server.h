@@ -40,8 +40,7 @@ enum class RoomType
 
 enum class DataType
 {
-    Image,
-    Sound
+    Image
 };
 
 struct ChatRoom

@@ -7,9 +7,10 @@
 
 Client::Client(const qint16 &id, const QString name, QTcpSocket* socket) : id_(id), name_(name), socket_(socket), currentDataResolving_("")
 {
-    connect(socket, &QTcpSocket::readyRead, this, &Client::readyRead);
+    connect(socket, &QTcpSocket::readyRead, this, &Client::readData);
     connect(socket, &QTcpSocket::disconnected, this, &Client::disconnected);
     connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
+
 
     connect(&resolveDataTimer_, &QTimer::timeout, this, &Client::resolveData);
     resolveDataTimer_.start(1);
@@ -23,6 +24,7 @@ Client::~Client()
     if(socket_)
     {
         socket_->disconnectFromHost();
+        voiceSocket_->disconnectFromHost();
     }
 }
 
@@ -43,6 +45,21 @@ void Client::joinRoom(std::shared_ptr<ChatRoom> room)
     object.insert("RoomName", QJsonValue(room->name));
     QJsonDocument document(object);
     addJsonDocument(document.toJson());
+}
+
+void Client::setVoiceSocket(std::shared_ptr<QTcpSocket> socket)
+{
+    if(!socket.get())
+    {
+        qDebug() << "Incoming voice socket is wrong";
+        return;
+    }
+
+    qDebug() << "Setting voice socket";
+    voiceSocket_ = socket;
+    connect(voiceSocket_.get(), &QTcpSocket::readyRead, this, &Client::readVoiceData);
+    connect(voiceSocket_.get(), &QTcpSocket::disconnected, voiceSocket_.get(), &QTcpSocket::deleteLater);
+
 }
 
 void Client::sendID()
@@ -91,20 +108,6 @@ void Client::sendImage(const QString& name, QByteArray& data)
     addJsonDocument(document.toJson());
 }
 
-void Client::sendSound(const QString& name, QByteArray &data)
-{
-    if(socket_)
-    {
-        QJsonObject object;
-        object.insert("Contents", QJsonValue(static_cast<int>(Contents::ServerData)));
-        object.insert("Name", QJsonValue(name));
-        object.insert("Type", QJsonValue(static_cast<int>(DataType::Sound)));
-        object.insert("Data", QJsonValue(QString(data)));
-        QJsonDocument doc(object);
-        addJsonDocument(doc.toJson());
-    }
-}
-
 void Client::write()
 {
     if(socket_ && documents_.size())
@@ -115,7 +118,7 @@ void Client::write()
     }
 }
 
-void Client::readyRead()
+void Client::readData()
 {
     QByteArray array;
     if(socket_)
@@ -133,6 +136,23 @@ void Client::readyRead()
     }
 
     unresolvedData_.append(QString(array).split('|', QString::SkipEmptyParts));
+}
+
+void Client::readVoiceData()
+{
+    if(voiceSocket_.get())
+    {
+        auto data = voiceSocket_->readAll();
+
+        if(data.size())
+        {
+            qDebug() << "voice data size: " << data.size();
+            for(auto& socket : voiceConnections_)
+            {
+                socket->write(data, data.size());
+            }
+        }
+    }
 }
 
 void Client::resolveData()

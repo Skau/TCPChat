@@ -11,14 +11,10 @@
 #include <QImageWriter>
 #include "mainwindow.h"
 #include "connectiondialog.h"
+#include <QThread>
+#include "voicemanager.h"
 
-#include <QAudioFormat>
-#include <QAudioDeviceInfo>
-#include <QAudioInput>
-#include <QAudioOutput>
-
-
-Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), connectionDialog_(connectionDialog), isResolvingData_(false), outputDevice_(nullptr), inputDevice_(nullptr)
+Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), connectionDialog_(connectionDialog), isResolvingData_(false)
 {
     resolveDataTimer_.start(1);
     connect(&resolveDataTimer_, &QTimer::timeout, this, &Client::resolveData);
@@ -33,51 +29,7 @@ Client::Client(std::shared_ptr<ConnectionDialog> connectionDialog) :ID_(-1), con
     connect(&socket_, &QTcpSocket::hostFound, this, &Client::hostFound);
     connect(&socket_, &QTcpSocket::connected, this, &Client::connected);
     connect(&socket_, &QTcpSocket::disconnected, this, &Client::disconnected);
-    connect(&socket_, &QTcpSocket::readyRead, this, &Client::readyRead);
-
-    auto inputDevices = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-
-    if(!inputDevices.size())
-    {
-        qDebug() << "Could not find an input device";
-        return;
-    }
-
-    QAudioFormat format;
-    format.setSampleRate(44100);
-    format.setChannelCount(2);
-    format.setSampleSize(16);
-    format.setCodec("audio/pcm");
-    format.setByteOrder(QAudioFormat::LittleEndian);
-    format.setSampleType(QAudioFormat::SignedInt);
-
-    //If format isn't supported find the nearest supported
-    QAudioDeviceInfo info(QAudioDeviceInfo::defaultInputDevice());
-    if (!info.isFormatSupported(format))
-        format = info.nearestFormat(format);
-
-    qDebug() << info.deviceName();
-
-    input_ = new QAudioInput(QAudioDeviceInfo::defaultInputDevice(), format);
-    input_->setBufferSize(16384);
-
-    QAudioFormat format2;
-    format2.setSampleRate(44100);
-    format2.setChannelCount(2);
-    format2.setSampleSize(16);
-    format2.setCodec("audio/pcm");
-    format2.setByteOrder(QAudioFormat::LittleEndian);
-    format2.setSampleType(QAudioFormat::SignedInt);
-
-    QAudioDeviceInfo info2(QAudioDeviceInfo::defaultOutputDevice());
-    if (!info2.isFormatSupported(format2))
-        format2 = info2.nearestFormat(format2);
-
-    qDebug() << info2.deviceName();
-
-    output_ = new QAudioOutput(QAudioDeviceInfo::defaultOutputDevice(), format2);
-    output_->setBufferSize(16384);
-    outputDevice_ = output_->start();
+    connect(&socket_, &QTcpSocket::readyRead, this, &Client::connectionDataReady);
 }
 
 Client::~Client()
@@ -91,7 +43,9 @@ Client::~Client()
 void Client::connectToHost(const QString& name, const QString &host, const quint16 &port)
 {
     name_ = name;
-    socket_.connectToHost(host, port);
+    host_ = host;
+    port_ = port;
+    socket_.connectToHost(host_, port_);
 
     emit setCurrentConnectionStatus("Connecting...");
 }
@@ -104,37 +58,40 @@ void Client::hostFound()
 
 void Client::connected()
 {
-    qDebug() << "Connected";
-
-    QJsonObject object;
-    object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientConnected)));
-    object.insert("Name", QJsonValue(name_));
-
-    QJsonDocument document(object);
-    addWriteData(document.toJson());
-
-    connectionDialog_->hide();
-
-    if(!mainWindow_.get())
+    if(ID_== -1)
     {
-        mainWindow_ = std::make_unique<MainWindow>(name_);
-        connect(mainWindow_.get(), &MainWindow::disconnected, this, &Client::disconnected);
-        connect(mainWindow_.get(), &MainWindow::sendMessage, this, &Client::sendMessage);
-        connect(mainWindow_.get(), &MainWindow::sendImage, this, &Client::sendImage);
-        //connect(mainWindow_.get(), &MainWindow::newRoom, this, &Client::newRoom);
-        connect(mainWindow_.get(), &MainWindow::joinRoom, this, &Client::joinRoom);
-        connect(mainWindow_.get(), &MainWindow::startVoice, this, &Client::startVoice);
-        connect(mainWindow_.get(), &MainWindow::endVoice, this, &Client::endVoice);
-        connect(mainWindow_.get(), &MainWindow::setInputVolume,this,&Client::changeInputVolume);
-        connect(this, &Client::addMessage, mainWindow_.get(), &MainWindow::addMessage);
-        connect(this, &Client::addImage, mainWindow_.get(), &MainWindow::addImage);
-        connect(this, &Client::addClients, mainWindow_.get(), &MainWindow::addClients);
-        connect(this, &Client::addNewRoom, mainWindow_.get(), &MainWindow::addRoom);
-        connect(this, &Client::joinedRoom, mainWindow_.get(), &MainWindow::joinedRoom);
-    }
+        qDebug() << "Connected";
+        QJsonObject object;
+        object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientConnected)));
+        object.insert("Name", QJsonValue(name_));
 
-    mainWindow_->setWindowTitle(name_);
-    mainWindow_->show();
+        QJsonDocument document(object);
+        socket_.write(document.toJson());
+
+        connectionDialog_->hide();
+
+        if(!mainWindow_.get())
+        {
+            mainWindow_ = std::make_unique<MainWindow>(name_);
+            connect(mainWindow_.get(), &MainWindow::disconnected, this, &Client::disconnected);
+            connect(mainWindow_.get(), &MainWindow::sendMessage, this, &Client::sendMessage);
+            connect(mainWindow_.get(), &MainWindow::sendImage, this, &Client::sendImage);
+            //connect(mainWindow_.get(), &MainWindow::newRoom, this, &Client::newRoom);
+            connect(mainWindow_.get(), &MainWindow::joinRoom, this, &Client::joinRoom);
+            connect(this, &Client::addMessage, mainWindow_.get(), &MainWindow::addMessage);
+            connect(this, &Client::addImage, mainWindow_.get(), &MainWindow::addImage);
+            connect(this, &Client::addClients, mainWindow_.get(), &MainWindow::addClients);
+            connect(this, &Client::addNewRoom, mainWindow_.get(), &MainWindow::addRoom);
+            connect(this, &Client::joinedRoom, mainWindow_.get(), &MainWindow::joinedRoom);
+        }
+
+        mainWindow_->setWindowTitle(name_);
+        mainWindow_->show();
+    }
+    else
+    {
+
+    }
 }
 
 void Client::error(QAbstractSocket::SocketError socketError)
@@ -152,7 +109,6 @@ void Client::error(QAbstractSocket::SocketError socketError)
 void Client::disconnected()
 {
     socket_.disconnectFromHost();
-
     if(mainWindow_.get())
     {
         mainWindow_->hide();
@@ -245,7 +201,7 @@ void Client::write()
 }
 
 // From server
-void Client::readyRead()
+void Client::connectionDataReady()
 {
     auto readData = socket_.readAll();
     if(readData.isEmpty())
@@ -254,62 +210,6 @@ void Client::readyRead()
     }
 
     unresolvedData_ += QString(readData).split('|', QString::SkipEmptyParts);
-}
-
-void Client::startVoice()
-{
-    qDebug() << "Voice started";
-    if(input_)
-    {
-        qDebug() << "Start";
-        inputDevice_ = static_cast<QBuffer*>(input_->start());
-        connect(inputDevice_, &QIODevice::readyRead, this, &Client::sendBitsOfVoice);
-    }
-}
-
-void Client::endVoice()
-{
-    qDebug() << "Voice ended";
-    if(input_)
-    {
-        input_->stop();
-    }
-}
-
-void Client::sendBitsOfVoice()
-{
-    if(inputDevice_)
-    {
-        auto data = inputDevice_->readAll();
-        if(data.size())
-        {
-            data = data.toBase64();
-            QJsonObject object;
-            object.insert("Contents", QJsonValue(static_cast<int>(Contents::ClientData)));
-            object.insert("ID", QJsonValue(ID_));
-            object.insert("Type", QJsonValue(static_cast<int>(DataType::Sound)));
-            object.insert("Data", QJsonValue(QString(data)));
-
-            QJsonDocument doc(object);
-            addWriteData(doc.toJson());
-
-            if(doc.isNull())
-            {
-                qDebug() << "Null";
-            }
-        }
-        else
-        {
-            qDebug() << "No data read";
-        }
-    }
-}
-
-void Client::changeInputVolume(int vol)
-{
-    double x = vol;
-    x = x/100;
-    output_->setVolume(x);
 }
 
 void Client::resolveData()
@@ -362,6 +262,18 @@ void Client::handlePacket(const QJsonObject &object)
         auto ID = object.find("ID").value().toInt();
         qDebug() << "ID: " << ID;
         ID_ = ID;
+
+        voiceManager_ = std::make_unique<VoiceManager>(ID_, host_, port_);
+        connect(&socket_, &QTcpSocket::disconnected,voiceManager_.get(), &VoiceManager::disconnected);
+        connect(mainWindow_.get(), &MainWindow::startVoice,voiceManager_.get(), &VoiceManager::startVoice);
+        connect(mainWindow_.get(), &MainWindow::endVoice,voiceManager_.get(), &VoiceManager::endVoice);
+        connect(mainWindow_.get(), &MainWindow::setInputVolume,voiceManager_.get(), &VoiceManager::changeInputVolume);
+
+        voiceManager_->moveToThread(&voiceThread_);
+        connect(voiceManager_.get(), &VoiceManager::done, &voiceThread_, &QThread::quit);
+
+        voiceThread_.start();
+
         break;
     }
     case Contents::ServerJoinRoom:
@@ -404,14 +316,6 @@ void Client::handlePacket(const QJsonObject &object)
 
         switch (type)
         {
-        case DataType::Sound:
-        {
-            auto name = object.find("Name").value().toString();
-            //qDebug() << "Received voice from " << name;
-            data = QByteArray::fromBase64(data);
-            outputDevice_->write(data, data.size());
-            break;
-        }
         case DataType::Image:
         {
             auto name = object.find("Name").value().toString();

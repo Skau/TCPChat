@@ -8,12 +8,11 @@
 #include <QTimer>
 #include <queue>
 #include <QJsonDocument>
+#include <QThread>
 
+class VoiceManager;
 class MainWindow;
 class ConnectionDialog;
-class QAudioInput;
-class QAudioOutput;
-class QBuffer;
 
 enum class Contents
 {
@@ -42,8 +41,7 @@ enum class RoomType
 
 enum class DataType
 {
-    Image,
-    Sound
+    Image
 };
 
 class Client : public QObject
@@ -61,15 +59,15 @@ private:
     std::shared_ptr<ConnectionDialog> connectionDialog_;
     std::unique_ptr<MainWindow> mainWindow_;
 
+    std::unique_ptr<VoiceManager> voiceManager_;
+    QThread voiceThread_;
     bool isResolvingData_;
-
-    QAudioInput* input_;
-    QAudioOutput* output_;
-    QIODevice* outputDevice_;
-    QBuffer* inputDevice_;
 
     QTimer resolveDataTimer_;
     QTimer writeDataTimer_;
+
+    QString host_;
+    quint16 port_;
 
 public:
     Client(std::shared_ptr<ConnectionDialog> connectionDialog);
@@ -99,11 +97,7 @@ private slots:
     void joinRoom(const QString& roomName);
     void newRoom(const QString& roomName, std::vector<int> clientIndexes);
     void write();
-    void readyRead();
-    void startVoice();
-    void endVoice();
-    void sendBitsOfVoice();
-    void changeInputVolume(int vol);
+    void connectionDataReady();
 };
 
 #endif // CLIENT_H

@@ -62,12 +62,20 @@ void Server::newConnection()
     auto socket = server_.nextPendingConnection();
     qDebug() << "New connection from " << socket->peerAddress().toString();
 
-    // Get name of new client
     socket->waitForReadyRead(); // Blocking
-    QString data = socket->readAll();
-    data = data.split("|").first();
+    QByteArray data;
+    while(socket->bytesAvailable())
+    {
+        data.append(socket->readAll());
+    }
+
+    if(!data.size())
+    {
+        qDebug() << "No connection data";
+    }
+
     QJsonParseError error;
-    QJsonDocument document = QJsonDocument::fromJson(data.toUtf8(), &error);
+    QJsonDocument document = QJsonDocument::fromJson(data, &error);
     if(!document.isNull())
     {
         if(document.isObject())
@@ -80,24 +88,63 @@ void Server::newConnection()
                 {
                     // Get name chosen for new client
                     auto name = object.find("Name").value().toString();
+                    qDebug() << "Name: " << name;
+                    if(name.length())
+                    {
+                        // Create and setup new client
+                        ++idCounterClient_;
+                        auto client = std::make_shared<Client>(idCounterClient_, name, socket);
+                        connect(client.get(), &Client::packetReady, this, &Server::addPacket);
+                        connect(client.get(), &Client::clientDisconnected, this, &Server::disconnected);
 
-                    // Create and setup new client
-                    ++idCounterClient_;
-                    auto client = std::make_shared<Client>(idCounterClient_, name, socket);
-                    connect(client.get(), &Client::packetReady, this, &Server::addPacket);
-                    connect(client.get(), &Client::clientDisconnected, this, &Server::disconnected);
+                        // Add client
+                        clients_.push_back(client);
+                        rooms_[0]->connectedClients.push_back(client);
+                        client->sendID();
+                        client->addNewRoom(rooms_[0]);
+                        client->joinRoom(rooms_[0]);
 
-                    // Add client
-                    clients_.push_back(client);
-                    rooms_[0]->connectedClients.push_back(client);
-                    client->sendID();
-                    client->addNewRoom(rooms_[0]);
-                    client->joinRoom(rooms_[0]);
+                        emit newConnectionAdded(client);
+                        emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
 
-                    emit newConnectionAdded(client);
-                    emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
+                        updateClientNames(rooms_[0]);
+                    }
+                    else
+                    {
+                        auto id = object.find("ID").value().toInt();
+                        qDebug() << "ID: " << id;
+                        if(id > -1)
+                        {
+                            std::shared_ptr<Client> connectedClient;
+                            for(auto& c : clients_)
+                            {
+                                if(c->getID() == id)
+                                {
+                                    connectedClient = c;
+                                    break;
+                                }
+                            }
 
-                    updateClientNames(rooms_[0]);
+                            if(connectedClient.get())
+                            {
+                                qDebug() << "Server setting voice socket";
+                                connectedClient->setVoiceSocket(std::shared_ptr<QTcpSocket>(socket));
+
+                                for(auto& c  : clients_)
+                                {
+                                    if(c->getID() != connectedClient->getID())
+                                    {
+                                        c->addVoiceSocket(std::shared_ptr<QTcpSocket>(socket));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                qDebug() << "Could not find client";
+                            }
+                        }
+
+                    }
                 }
             }
             else
@@ -305,16 +352,6 @@ void Server::handlePacket()
         auto data = object.find("Data").value().toString().toUtf8();
         switch (type)
         {
-        case DataType::Sound:
-        {
-            qDebug() << "It's sound";
-            for(auto& connectedClient : client->getCurrentRoom()->connectedClients)
-            {
-                if(connectedClient != client)
-                    connectedClient->sendSound(client->getName(), data);
-            }
-            break;
-        }
         case DataType::Image:
         {
             qDebug() << "It's an image";
