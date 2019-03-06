@@ -89,7 +89,6 @@ void VoiceManager::startVoice()
         return;
     }
 
-    qDebug() << "Voice started";
     if(input_)
     {
         qDebug() << "Start";
@@ -106,7 +105,6 @@ void VoiceManager::endVoice()
         return;
     }
 
-    qDebug() << "Voice ended";
     if(input_)
     {
         input_->stop();
@@ -129,7 +127,7 @@ void VoiceManager::sendBitsOfVoice()
         data.append(inputDevice_->readAll());
         if(data.size() > static_cast<int>(sizeof(ID_)))
         {
-            socket_->writeDatagram(data, data.size(), socket_->localAddress().Broadcast, port_);
+            socket_->writeDatagram(data, data.size(), QHostAddress(QHostAddress::AnyIPv4).Broadcast, port_);
         }
     }
 }
@@ -160,6 +158,7 @@ void VoiceManager::readVoiceData()
         QByteArray data;
         data.resize(static_cast<int>(socket_->pendingDatagramSize()));
         socket_->readDatagram(data.data(), data.size());
+
         if(data.size())
         {
             int id = -1;

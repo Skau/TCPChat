@@ -23,11 +23,13 @@ public slots:
     void setStatus(const std::string& string);
 
 private slots:
-    void on_button_Connect_clicked();
-
     __attribute__((noreturn)) void on_button_Exit_clicked();
 
-    void on_pushButton_clicked();
+    void on_button_Martin_clicked();
+
+    void on_button_MickyDBros_clicked();
+
+    void on_button_Custom_clicked();
 
 private:
     Ui::ConnectionDialog *ui;
