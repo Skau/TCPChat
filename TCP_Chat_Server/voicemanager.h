@@ -2,25 +2,27 @@
 #define VOICEMANAGER_H
 
 #include <QObject>
+#include <QTcpSocket>
 
-class QUdpSocket;
+class QTcpServer;
+class QTcpSocket;
 
 class VoiceManager : public QObject
 {
     Q_OBJECT
 
 private:
-    QUdpSocket* socket;
+    QTcpServer* server_;
+    std::vector<QTcpSocket*> sockets_;
 
 public:
-    explicit VoiceManager(QObject* parent = nullptr, const quint16& port = 0);
-
-private:
-    void writeData(QUdpSocket* owner, const QByteArray &data);
+    explicit VoiceManager(const quint16& port, QObject* parent = nullptr);
 
 public slots:
 
 private slots:
+    void newConnection();
+    void acceptError(QAbstractSocket::SocketError socketError);
     void readData();
     void disconnected();
 };

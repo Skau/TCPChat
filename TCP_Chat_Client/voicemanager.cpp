@@ -1,5 +1,5 @@
 #include "voicemanager.h"
-#include <QUdpSocket>
+#include <QTcpSocket>
 #include <QAudioDeviceInfo>
 #include <QAudioInput>
 #include <QAudioOutput>
@@ -8,41 +8,45 @@
 #include <QBuffer>
 #include "client.h"
 #include <QDataStream>
+#include <QIODevice>
 
 VoiceManager::VoiceManager(const int& ID, const QString &host, const quint16 &port)
-    : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(QHostAddress(host)), port_(port)
+    : ID_(ID), inputVoiceReady_(true), outputVoiceReady_(true), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(host), port_(port)
 {
-    socketSender_ = new QUdpSocket(this);
-    if(!socketSender_->bind(port_))
-        qDebug() << "fail";
-
-    socketSender_->setSocketOption(QAbstractSocket::MulticastTtlOption, 250);
-
-    socketReceiver_ = new QUdpSocket(this);
-    if(!socketReceiver_->bind(QHostAddress(QHostAddress::AnyIPv4), 45454, QUdpSocket::ReuseAddressHint))
-    {
-        qDebug() << "Failed to bind";
-    }
-
-    if(!socketReceiver_->joinMulticastGroup(QHostAddress("239.255.43.21")))
-    {
-        qDebug() << "Failed to join multicast group";
-    }
-
-    connect(socketReceiver_, &QUdpSocket::readyRead, this, &VoiceManager::readVoiceData);
-
-    if(setupAudio())
-        voiceReady_ = true;
+    socket_ = new QTcpSocket(this);
+    socket_->connectToHost(host_, port+1);
+    connect(socket_, &QTcpSocket::readyRead, this, &VoiceManager::readVoiceData);
+    setupAudio();
 }
 
-bool VoiceManager::setupAudio()
+void VoiceManager::setupAudio()
 {
     auto inputDevices = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
 
     if(!inputDevices.size())
     {
         qDebug() << "Could not find an input device";
-        return false;
+        inputVoiceReady_ = false;
+    }
+    else
+    {
+        QAudioFormat format;
+        format.setSampleRate(64000);
+        format.setChannelCount(1);
+        format.setSampleSize(16);
+        format.setCodec("audio/pcm");
+        format.setByteOrder(QAudioFormat::LittleEndian);
+        format.setSampleType(QAudioFormat::SignedInt);
+
+        //If format isn't supported find the nearest supported
+        QAudioDeviceInfo info(QAudioDeviceInfo::defaultInputDevice());
+        if (!info.isFormatSupported(format))
+            format = info.nearestFormat(format);
+
+        qDebug() << info.deviceName();
+
+        input_ = new QAudioInput(QAudioDeviceInfo::defaultInputDevice(), format);
+        input_->setBufferSize(16384);
     }
 
     auto outputDevices = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
@@ -50,51 +54,33 @@ bool VoiceManager::setupAudio()
     if(!outputDevices.size())
     {
         qDebug() << "Could not find an output device";
-        return false;
+        outputVoiceReady_ = false;
     }
+    else
+    {
+        QAudioFormat format2;
+        format2.setSampleRate(64000);
+        format2.setChannelCount(1);
+        format2.setSampleSize(16);
+        format2.setCodec("audio/pcm");
+        format2.setByteOrder(QAudioFormat::LittleEndian);
+        format2.setSampleType(QAudioFormat::SignedInt);
 
-    QAudioFormat format;
-    format.setSampleRate(64000);
-    format.setChannelCount(1);
-    format.setSampleSize(16);
-    format.setCodec("audio/pcm");
-    format.setByteOrder(QAudioFormat::LittleEndian);
-    format.setSampleType(QAudioFormat::SignedInt);
+        QAudioDeviceInfo info2(QAudioDeviceInfo::defaultOutputDevice());
+        if (!info2.isFormatSupported(format2))
+            format2 = info2.nearestFormat(format2);
 
-    //If format isn't supported find the nearest supported
-    QAudioDeviceInfo info(QAudioDeviceInfo::defaultInputDevice());
-    if (!info.isFormatSupported(format))
-        format = info.nearestFormat(format);
+        qDebug() << info2.deviceName();
 
-    qDebug() << info.deviceName();
-
-    input_ = new QAudioInput(QAudioDeviceInfo::defaultInputDevice(), format);
-    input_->setBufferSize(16384);
-
-    QAudioFormat format2;
-    format2.setSampleRate(64000);
-    format2.setChannelCount(1);
-    format2.setSampleSize(16);
-    format2.setCodec("audio/pcm");
-    format2.setByteOrder(QAudioFormat::LittleEndian);
-    format2.setSampleType(QAudioFormat::SignedInt);
-
-    QAudioDeviceInfo info2(QAudioDeviceInfo::defaultOutputDevice());
-    if (!info2.isFormatSupported(format2))
-        format2 = info2.nearestFormat(format2);
-
-    qDebug() << info2.deviceName();
-
-    output_ = new QAudioOutput(QAudioDeviceInfo::defaultOutputDevice(), format2);
-    output_->setBufferSize(16384);
-    outputDevice_ = output_->start();
-
-    return true;
+        output_ = new QAudioOutput(QAudioDeviceInfo::defaultOutputDevice(), format2);
+        output_->setBufferSize(16384);
+        outputDevice_ = output_->start();
+    }
 }
 
 void VoiceManager::startVoice()
 {
-    if(!voiceReady_)
+    if(!inputVoiceReady_)
     {
         qDebug() << "Voice not ready";
         return;
@@ -109,9 +95,9 @@ void VoiceManager::startVoice()
 
 void VoiceManager::endVoice()
 {
-    if(!voiceReady_)
+    if(!inputVoiceReady_)
     {
-        qDebug() << "Voice not ready";
+        qDebug() << "Input voice not ready";
         return;
     }
 
@@ -124,29 +110,28 @@ void VoiceManager::endVoice()
 
 void VoiceManager::sendBitsOfVoice()
 {
-    if(!voiceReady_)
+    if(!inputVoiceReady_)
     {
-        qDebug() << "Voice not ready";
+        qDebug() << "Input voice not ready";
+        return;
     }
 
     if(inputDevice_)
     {
-        QByteArray data;
-        QDataStream stream(&data, QIODevice::WriteOnly);
-        stream << ID_;
-        data.append(inputDevice_->readAll());
+        auto data = inputDevice_->readAll();
         if(data.size() > static_cast<int>(sizeof(ID_)))
         {
-            socketSender_->writeDatagram(data, QHostAddress("239.255.43.21"), 45454);
+           socket_->write(data, data.size());
         }
     }
 }
 
 void VoiceManager::changeInputVolume(int vol)
 {
-    if(!voiceReady_)
+    if(!outputVoiceReady_)
     {
-        qDebug() << "Voice not ready";
+        qDebug() << "Output voice not ready";
+        return;
     }
 
     double x = vol;
@@ -156,27 +141,12 @@ void VoiceManager::changeInputVolume(int vol)
 
 void VoiceManager::readVoiceData()
 {
-    if(!voiceReady_)
+    if(!outputVoiceReady_)
     {
-        qDebug() << "Voice not ready";
+        qDebug() << "Output voice not ready";
+        return;
     }
 
-    while(socketReceiver_->hasPendingDatagrams())
-    {
-        QByteArray data;
-        data.resize(static_cast<int>(socketReceiver_->pendingDatagramSize()));
-        socketReceiver_->readDatagram(data.data(), data.size());
-
-        if(data.size())
-        {
-            int id = -1;
-            QDataStream stream(&data, QIODevice::ReadOnly);
-            stream >> id;
-            data.remove(0, sizeof(ID_));
-            if(id != ID_)
-            {
-                outputDevice_->write(data, data.size());
-            }
-        }
-    }
+    auto data = socket_->readAll();
+    outputDevice_->write(data, data.size());
 }

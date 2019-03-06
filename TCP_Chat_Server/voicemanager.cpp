@@ -1,59 +1,49 @@
 #include "voicemanager.h"
-#include <QUdpSocket>
+#include <QTcpServer>
 
-VoiceManager::VoiceManager(QObject* parent, const quint16 &port) : QObject(parent)
+VoiceManager::VoiceManager(const quint16 &port, QObject* parent) : QObject(parent)
 {
-    socket = new QUdpSocket(this);
-    socket->bind(QHostAddress::AnyIPv4, port);
+    server_ = new QTcpServer(this);
+    connect(server_, &QTcpServer::newConnection, this, &VoiceManager::newConnection);
+    connect(server_, &QTcpServer::acceptError, this, &VoiceManager::acceptError);
 
-    connect(socket, &QUdpSocket::readyRead, this, &VoiceManager::readData);
+    server_->listen(QHostAddress::AnyIPv4, port+1);
+}
+
+void VoiceManager::newConnection()
+{
+    sockets_.emplace_back(server_->nextPendingConnection());
+    connect(sockets_.back(), &QTcpSocket::readyRead, this, &VoiceManager::readData, Qt::QueuedConnection);
+    connect(sockets_.back(), QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error), this, &VoiceManager::acceptError);
+}
+
+void VoiceManager::acceptError(QAbstractSocket::SocketError socketError)
+{
+    qDebug() << "Socket error: " + QVariant::fromValue(socketError).toString();
 }
 
 void VoiceManager::readData()
 {
-    while(socket->hasPendingDatagrams())
+    auto socket = static_cast<QTcpSocket*>(sender());
+    auto data = socket->readAll();
+    if(data.size())
     {
-        QByteArray data;
-        data.resize(socket->pendingDatagramSize());
-        socket->readDatagram(data.data(), data.size());
-
-
-        qDebug() << "Voice data: " << data.size();
-        //socket->writeDatagram()
-    }
-
-
-
-    auto owner = static_cast<QUdpSocket*>(sender());
-
-    if(owner)
-    {
-        auto data = owner->readAll();
-
-        if(data.size())
+        qDebug() << data.size() << " bytes of data read";
+        for(auto& receiver : sockets_)
         {
-            qDebug() << data.size();
-            writeData(owner, data);
+            if(receiver != socket)
+            {
+                auto sent = receiver->write(data, data.size());
+                qDebug() << sent  << " bytes of data sent";
+            }
         }
     }
 }
 
-void VoiceManager::writeData(QUdpSocket *owner, const QByteArray& data)
-{
-//    for(auto& socket : sockets_)
-//    {
-//        if(socket && socket != owner)
-//        {
-
-//            socket->write(data, data.size());
-//        }
-//    }
-}
-
 void VoiceManager::disconnected()
 {
-//    auto socket = static_cast<QUdpSocket*>(sender());
-     socket->disconnectFromHost();
-//    sockets_.erase(std::remove(sockets_.begin(), sockets_.end(), socket), sockets_.end());
-      socket->deleteLater();
+    auto socket = static_cast<QTcpSocket*>(sender());
+    socket->disconnectFromHost();
+    sockets_.erase(std::remove(sockets_.begin(), sockets_.end(), socket), sockets_.end());
+    socket->deleteLater();
 }

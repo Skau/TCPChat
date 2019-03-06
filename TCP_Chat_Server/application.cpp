@@ -19,8 +19,6 @@ Application::Application() : idCounterClient_(0)
 
     connect(&timer_, &QTimer::timeout, this, &Application::handlePacket);
     timer_.start(1);
-
-    voiceManager_ = std::make_unique<VoiceManager>();
 }
 
 Application::~Application()
@@ -46,6 +44,8 @@ void Application::startServer(const quint16& port)
 
     // Create initial room
     createRoom("Main Room");
+
+    voiceManager_ = std::make_unique<VoiceManager>(port, this);
 }
 
 // Slot
@@ -121,38 +121,6 @@ void Application::newConnection()
                         emit changeRoomName(QString(rooms_[0]->name + " [" + QString::number(rooms_[0]->connectedClients.size()) + "]"), 0);
 
                         updateClientNames(rooms_[0]);
-                    }
-                    else
-                    {
-
-//                        // Find ID of voice socket owner
-//                        auto id = object.find("ID").value().toInt();
-//                        if(id > -1)
-//                        {
-//                            // Find the client
-//                            for(auto& client : clients_)
-//                            {
-//                                if(client->getID() == id)
-//                                {
-//                                    client->setVoiceSocket(std::shared_ptr<QTcpSocket>(socket));
-
-//                                    for(auto& c  : clients_)
-//                                    {
-//                                        if(c->getID() != id)
-//                                        {
-//                                            c->addVoiceSocket(std::shared_ptr<QTcpSocket>(socket));
-//                                            client->addVoiceSocket(c->getVoiceSocket());
-//                                        }
-//                                    }
-//                                }
-//                            }
-
-//                            qDebug() << "Could not find client";
-//                        }
-//                        else
-//                        {
-//                            qDebug() << "ID not initialized";
-//                        }
                     }
                 }
             }
