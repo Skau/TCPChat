@@ -12,13 +12,24 @@
 VoiceManager::VoiceManager(const int& ID, const QString &host, const quint16 &port)
     : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(QHostAddress(host)), port_(port)
 {
-    socket_ = new QUdpSocket(this);
-    if(!socket_->bind(QHostAddress::AnyIPv4, port_, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint))
+    socketSender_ = new QUdpSocket(this);
+    if(!socketSender_->bind(port_))
+        qDebug() << "fail";
+
+    socketSender_->setSocketOption(QAbstractSocket::MulticastTtlOption, 250);
+
+    socketReceiver_ = new QUdpSocket(this);
+    if(!socketReceiver_->bind(QHostAddress(QHostAddress::AnyIPv4), 45454, QUdpSocket::ReuseAddressHint))
     {
-        qDebug() << "failed to bind";
+        qDebug() << "Failed to bind";
     }
 
-    connect(socket_, &QUdpSocket::readyRead, this, &VoiceManager::readVoiceData);
+    if(!socketReceiver_->joinMulticastGroup(QHostAddress("239.255.43.21")))
+    {
+        qDebug() << "Failed to join multicast group";
+    }
+
+    connect(socketReceiver_, &QUdpSocket::readyRead, this, &VoiceManager::readVoiceData);
 
     if(setupAudio())
         voiceReady_ = true;
@@ -91,7 +102,6 @@ void VoiceManager::startVoice()
 
     if(input_)
     {
-        qDebug() << "Start";
         inputDevice_ = static_cast<QBuffer*>(input_->start());
         connect(inputDevice_, &QIODevice::readyRead, this, &VoiceManager::sendBitsOfVoice);
     }
@@ -127,7 +137,7 @@ void VoiceManager::sendBitsOfVoice()
         data.append(inputDevice_->readAll());
         if(data.size() > static_cast<int>(sizeof(ID_)))
         {
-            socket_->writeDatagram(data, data.size(), QHostAddress(QHostAddress::AnyIPv4).Broadcast, port_);
+            socketSender_->writeDatagram(data, QHostAddress("239.255.43.21"), 45454);
         }
     }
 }
@@ -142,8 +152,6 @@ void VoiceManager::changeInputVolume(int vol)
     double x = vol;
     x = x/100;
     output_->setVolume(x);
-
-    qDebug() << "New volume: " << output_->volume();
 }
 
 void VoiceManager::readVoiceData()
@@ -153,11 +161,11 @@ void VoiceManager::readVoiceData()
         qDebug() << "Voice not ready";
     }
 
-    while(socket_->hasPendingDatagrams())
+    while(socketReceiver_->hasPendingDatagrams())
     {
         QByteArray data;
-        data.resize(static_cast<int>(socket_->pendingDatagramSize()));
-        socket_->readDatagram(data.data(), data.size());
+        data.resize(static_cast<int>(socketReceiver_->pendingDatagramSize()));
+        socketReceiver_->readDatagram(data.data(), data.size());
 
         if(data.size())
         {
@@ -166,7 +174,9 @@ void VoiceManager::readVoiceData()
             stream >> id;
             data.remove(0, sizeof(ID_));
             if(id != ID_)
+            {
                 outputDevice_->write(data, data.size());
+            }
         }
     }
 }

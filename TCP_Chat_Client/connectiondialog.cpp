@@ -8,7 +8,6 @@ ConnectionDialog::ConnectionDialog(QWidget *parent) :
     ui(new Ui::ConnectionDialog)
 {
     ui->setupUi(this);
-
 }
 
 ConnectionDialog::~ConnectionDialog()
@@ -29,15 +28,41 @@ __attribute__((noreturn)) void ConnectionDialog::on_button_Exit_clicked()
 
 void ConnectionDialog::on_button_Martin_clicked()
 {
-    emit connectToServer(ui->line_Name->text(), "81.167.129.214", 55001);
+    auto name = ui->line_Name->text();
+    if(name.length())
+    {
+        emit connectToServer(ui->line_Name->text(), "81.167.129.214", 55001);
+    }
+
 }
 
 void ConnectionDialog::on_button_MickyDBros_clicked()
 {
-    emit connectToServer(ui->line_Name->text(), "chat.mickydbros.no", 55001);
+    auto name = ui->line_Name->text();
+    if(name.length())
+    {
+        emit connectToServer(ui->line_Name->text(), "chat.mickydbros.no", 55001);
+    }
 }
 
 void ConnectionDialog::on_button_Custom_clicked()
 {
-    emit connectToServer(ui->line_Name->text(), ui->line_IP->text(), 55001);
+    auto name = ui->line_Name->text();
+    if(name.length())
+    {
+        emit connectToServer(ui->line_Name->text(), ui->line_IP->text(), 55001);
+    }
+}
+
+void ConnectionDialog::on_line_Name_textEdited(const QString &arg1)
+{
+    if(arg1.length())
+    {
+        if(!QRegExp("\\s*").exactMatch(arg1))
+        {
+            ui->button_Martin->setEnabled(true);
+            ui->button_MickyDBros->setEnabled(true);
+            ui->button_Custom->setEnabled(true);
+        }
+    }
 }

@@ -21,8 +21,8 @@ private:
     QAudioOutput* output_;
     QIODevice* outputDevice_;
     QBuffer* inputDevice_;
-    QUdpSocket* socket_;
     QUdpSocket* socketReceiver_;
+    QUdpSocket* socketSender_;
     QHostAddress host_;
     quint16 port_;
 
@@ -34,6 +34,7 @@ private:
 
 signals:
     void done();
+    void receivingVoiceData(const QString& message);
 
 public slots:
     void startVoice();

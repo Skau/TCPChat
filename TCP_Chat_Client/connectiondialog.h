@@ -31,6 +31,8 @@ private slots:
 
     void on_button_Custom_clicked();
 
+    void on_line_Name_textEdited(const QString &arg1);
+
 private:
     Ui::ConnectionDialog *ui;
 };
