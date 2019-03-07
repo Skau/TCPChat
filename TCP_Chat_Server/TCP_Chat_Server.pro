@@ -28,14 +28,12 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     client.cpp \
-    application.cpp \
-    voicemanager.cpp
+    application.cpp
 
 HEADERS += \
         mainwindow.h \
     client.h \
-    application.h \
-    voicemanager.h
+    application.h
 
 FORMS += \
         mainwindow.ui

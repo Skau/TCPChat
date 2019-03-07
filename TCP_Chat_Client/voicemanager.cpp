@@ -10,12 +10,12 @@
 #include <QDataStream>
 
 VoiceManager::VoiceManager(const int& ID, const QString &host, const quint16 &port)
-    : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(QHostAddress(host)), port_(port)
+    : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(QHostAddress(host)), port_(port+1)
 {
     socketSender_ = new QUdpSocket(this);
 
     socketReceiver_ = new QUdpSocket(this);
-    if(!socketReceiver_->bind(host_, port+1, QUdpSocket::ReuseAddressHint))
+    if(!socketReceiver_->bind(host_, port_, QUdpSocket::ReuseAddressHint))
     {
         qDebug() << "Failed to bind";
     }
@@ -122,15 +122,8 @@ void VoiceManager::sendBitsOfVoice()
 
     if(inputDevice_)
     {
-        QByteArray data;
-        QDataStream stream(&data, QIODevice::WriteOnly);
-        stream << ID_;
-        data.append(inputDevice_->readAll());
-        if(data.size() > static_cast<int>(sizeof(ID_)))
-        {
-            auto sent = socketSender_->writeDatagram(data, host_, port_+1);
-            qDebug() << "Sent " << sent << " bytes";
-        }
+        auto data = inputDevice_->readAll();
+        socketSender_->writeDatagram(data, data.size(), host_.Broadcast, port_);
     }
 }
 
@@ -153,24 +146,16 @@ void VoiceManager::readVoiceData()
         qDebug() << "Voice not ready";
     }
 
-    qDebug() << "Receiving data";
-
     while(socketReceiver_->hasPendingDatagrams())
     {
         QByteArray data;
         data.resize(static_cast<int>(socketReceiver_->pendingDatagramSize()));
-        socketReceiver_->readDatagram(data.data(), data.size());
-
-        if(data.size())
+        QHostAddress address = QHostAddress();
+        quint16 port = 0;
+        socketReceiver_->readDatagram(data.data(), data.size(), &address, &port);
+        if(socketSender_->localPort() != port)
         {
-            int id = -1;
-            QDataStream stream(&data, QIODevice::ReadOnly);
-            stream >> id;
-            data.remove(0, sizeof(ID_));
-            if(id != ID_)
-            {
-                outputDevice_->write(data, data.size());
-            }
+            outputDevice_->write(data.data(), data.size());
         }
     }
 }

@@ -3,6 +3,8 @@
 
 #include <QObject>
 #include <QHostAddress>
+#include <QTimer>
+#include <queue>
 
 class QUdpSocket;
 class QAudioInput;
@@ -42,6 +44,10 @@ public slots:
     void sendBitsOfVoice();
     void changeInputVolume(int vol);
     void readVoiceData();
+
+private:
+    void sendData();
+    void playData();
 };
 
 #endif // VOICEMANAGER_H

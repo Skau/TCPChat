@@ -13,7 +13,6 @@
 class QUdpSocket;
 class QTcpServer;
 class Client;
-class VoiceManager;
 
 enum class Contents
 {
@@ -97,8 +96,6 @@ private:
     std::vector<std::shared_ptr<ChatRoom>> rooms_;
     std::queue<Packet> packetsReady_;
     std::unique_ptr<QTcpServer> server_;
-    std::unique_ptr<VoiceManager> voiceManager_;
-
     QTimer timer_;
 
 public:

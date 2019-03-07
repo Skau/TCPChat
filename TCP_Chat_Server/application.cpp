@@ -7,7 +7,6 @@
 #include <QBuffer>
 #include <QImageReader>
 #include <QTcpServer>
-#include "voicemanager.h"
 #include <QThread>
 #include <QUdpSocket>
 
@@ -19,8 +18,6 @@ Application::Application() : idCounterClient_(0)
 
     connect(&timer_, &QTimer::timeout, this, &Application::handlePacket);
     timer_.start(1);
-
-    voiceManager_ = std::make_unique<VoiceManager>();
 }
 
 Application::~Application()
