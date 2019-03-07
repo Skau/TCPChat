@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QHostAddress>
 
-class QTcpSocket;
+class QUdpSocket;
 class QAudioInput;
 class QAudioOutput;
 class QBuffer;
@@ -16,20 +16,21 @@ class VoiceManager : public QObject
 
 private:
     int ID_;
-    bool inputVoiceReady_, outputVoiceReady_;
+    bool voiceReady_;
     QAudioInput* input_;
     QAudioOutput* output_;
     QIODevice* outputDevice_;
     QBuffer* inputDevice_;
-    QTcpSocket* socket_;
-    QString host_;
+    QUdpSocket* socketReceiver_;
+    QUdpSocket* socketSender_;
+    QHostAddress host_;
     quint16 port_;
 
 public:
     VoiceManager(const int &ID, const QString& host, const quint16& port);
 
 private:
-    void setupAudio();
+    bool setupAudio();
 
 signals:
     void done();
