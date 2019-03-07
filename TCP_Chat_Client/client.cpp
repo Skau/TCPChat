@@ -270,7 +270,7 @@ void Client::handlePacket(const QJsonObject &object)
 
         voiceManager_->moveToThread(&voiceThread_);
         connect(voiceManager_.get(), &VoiceManager::done, &voiceThread_, &QThread::quit);
-        connect(voiceManager_.get(), &VoiceManager::receivingVoiceData, mainWindow_.get(), &MainWindow::addMessage);
+        connect(voiceManager_.get(), &VoiceManager::addMessage, mainWindow_.get(), &MainWindow::addMessage);
         voiceThread_.start();
 
         break;

@@ -123,7 +123,7 @@ void VoiceManager::sendBitsOfVoice()
     if(inputDevice_)
     {
         auto data = inputDevice_->readAll();
-        socketSender_->writeDatagram(data, data.size(), host_.Broadcast, port_);
+        socketSender_->writeDatagram(data, data.size(), QHostAddress(host_.Broadcast), port_);
     }
 }
 

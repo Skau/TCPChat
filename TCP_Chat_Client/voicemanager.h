@@ -36,7 +36,7 @@ private:
 
 signals:
     void done();
-    void receivingVoiceData(const QString& message);
+    void addMessage(const QString& message);
 
 public slots:
     void startVoice();
