@@ -45,7 +45,7 @@ bool VoiceManager::setupAudio()
     }
 
     QAudioFormat format;
-    format.setSampleRate(64000);
+    format.setSampleRate(44100);
     format.setChannelCount(1);
     format.setSampleSize(16);
     format.setCodec("audio/pcm");
@@ -63,7 +63,7 @@ bool VoiceManager::setupAudio()
     input_->setBufferSize(16384);
 
     QAudioFormat format2;
-    format2.setSampleRate(64000);
+    format2.setSampleRate(44100);
     format2.setChannelCount(1);
     format2.setSampleSize(16);
     format2.setCodec("audio/pcm");
