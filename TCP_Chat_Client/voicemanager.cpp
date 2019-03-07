@@ -13,20 +13,11 @@ VoiceManager::VoiceManager(const int& ID, const QString &host, const quint16 &po
     : ID_(ID), voiceReady_(false), input_(nullptr), output_(nullptr), outputDevice_(nullptr), inputDevice_(nullptr), host_(QHostAddress(host)), port_(port)
 {
     socketSender_ = new QUdpSocket(this);
-    if(!socketSender_->bind(port_))
-        qDebug() << "fail";
-
-    socketSender_->setSocketOption(QAbstractSocket::MulticastTtlOption, 250);
 
     socketReceiver_ = new QUdpSocket(this);
-    if(!socketReceiver_->bind(QHostAddress(QHostAddress::AnyIPv4), 45454, QUdpSocket::ReuseAddressHint))
+    if(!socketReceiver_->bind(host_, port+1, QUdpSocket::ReuseAddressHint))
     {
         qDebug() << "Failed to bind";
-    }
-
-    if(!socketReceiver_->joinMulticastGroup(QHostAddress("239.255.43.21")))
-    {
-        qDebug() << "Failed to join multicast group";
     }
 
     connect(socketReceiver_, &QUdpSocket::readyRead, this, &VoiceManager::readVoiceData);
@@ -137,7 +128,8 @@ void VoiceManager::sendBitsOfVoice()
         data.append(inputDevice_->readAll());
         if(data.size() > static_cast<int>(sizeof(ID_)))
         {
-            socketSender_->writeDatagram(data, QHostAddress("239.255.43.21"), 45454);
+            auto sent = socketSender_->writeDatagram(data, host_, port_+1);
+            qDebug() << "Sent " << sent << " bytes";
         }
     }
 }
@@ -160,6 +152,8 @@ void VoiceManager::readVoiceData()
     {
         qDebug() << "Voice not ready";
     }
+
+    qDebug() << "Receiving data";
 
     while(socketReceiver_->hasPendingDatagrams())
     {
